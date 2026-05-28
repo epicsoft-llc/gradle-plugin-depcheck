@@ -57,7 +57,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
             }
 
             // --- build.gradle / build.gradle.kts ---
-            collectBuildFiles(rootDir).forEach { file ->
+            collectBuildFiles().forEach { file ->
                 logger.lifecycle("Scanning: ${file.relativeTo(rootDir)}")
                 val entries = BuildGradleParser.parse(file)
 
@@ -106,13 +106,10 @@ abstract class CheckUpdatesTask : DefaultTask() {
         }
     }
 
-    private fun collectBuildFiles(rootDir: File): List<File> =
-        listOf("build.gradle", "build.gradle.kts")
-            .map { File(rootDir, it) }
-            .filter { it.exists() } +
-        project.subprojects.flatMap { sub ->
+    private fun collectBuildFiles(): List<File> =
+        project.rootProject.allprojects.flatMap { p ->
             listOf("build.gradle", "build.gradle.kts")
-                .map { File(sub.projectDir, it) }
+                .map { File(p.projectDir, it) }
                 .filter { it.exists() }
         }
 }
