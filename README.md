@@ -18,7 +18,19 @@ plugins {
 }
 ```
 
-### 2. Task ausführen
+### 2. Konfiguration (optional)
+
+```groovy
+depsUpdate {
+  verbose = true  // default: false
+}
+```
+
+| Option | Typ | Default | Beschreibung |
+|---|---|---|---|
+| `verbose` | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates |
+
+### 3. Task ausführen
 
 ```bash
 ./gradlew checkDependencyUpdates
@@ -26,15 +38,29 @@ plugins {
 
 ### Beispielausgabe
 
+**Standard (`verbose = false`) — nur Updates:**
 ```
 Scanning: gradle/libs.versions.toml
 Scanning: build.gradle
 Scanning: core/build.gradle
 
-Available updates (3):
+Available updates (2):
   [dep]     org.springframework.boot:spring-boot-starter  3.2.0  →  3.4.1
-  [dep]     com.fasterxml.jackson.core:jackson-databind   2.15.0 →  2.18.3
   [plugin]  org.springframework.boot  3.2.0  →  3.4.1
+```
+
+**Verbose (`verbose = true`) — alle Dependencies:**
+```
+Scanning: gradle/libs.versions.toml
+Scanning: build.gradle
+Scanning: core/build.gradle
+
+Checked 3 dependencies:
+  [dep]     com.fasterxml.jackson.core:jackson-databind   2.18.3
+  [dep]     org.springframework.boot:spring-boot-starter  3.2.0  →  3.4.1
+  [plugin]  org.springframework.boot  3.2.0  →  3.4.1
+
+2 update(s) available.
 ```
 
 ---
@@ -85,7 +111,8 @@ Läuft automatisch in der CI-Pipeline beim Setzen eines Git-Tags. Publish über 
 
 ```
 src/main/kotlin/one/epicsoft/gradle/
-├── DepsUpdatePlugin.kt          # Registriert den Task
+├── DepsUpdatePlugin.kt          # Registriert Extension + Task
+├── DepsUpdateExtension.kt       # Konfiguration (verbose)
 ├── task/CheckUpdatesTask.kt     # Task-Implementierung
 ├── api/DepsDevClient.kt         # deps.dev HTTP-Client
 └── parser/

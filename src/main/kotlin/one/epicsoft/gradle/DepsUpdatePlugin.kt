@@ -6,9 +6,11 @@ import org.gradle.api.Project
 
 class DepsUpdatePlugin : Plugin<Project> {
     override fun apply(project: Project) {
+        val extension = project.extensions.create("depsUpdate", DepsUpdateExtension::class.java)
         project.tasks.register("checkDependencyUpdates", CheckUpdatesTask::class.java) {
             it.group = "dependency management"
             it.description = "Check for newer versions via deps.dev (libs.versions.toml + build.gradle)"
+            it.verbose.set(extension.verbose)
         }
     }
 }
