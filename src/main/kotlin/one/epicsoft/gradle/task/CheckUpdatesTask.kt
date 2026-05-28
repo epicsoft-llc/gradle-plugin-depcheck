@@ -90,7 +90,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
             }
 
             val verbose = verbose.get()
-            val showAll = showAll.get()
+            val showAll = showAll.get() || verbose
             val results = jobs.mapNotNull { it.get() }.sortedBy { it.coord }
             val updates = results.filter { it.hasUpdate }
 

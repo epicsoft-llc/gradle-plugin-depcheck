@@ -31,8 +31,8 @@ depsUpdate {
 
 | Option | Typ | Default | Beschreibung |
 |---|---|---|---|
-| `verbose`           | `Boolean` | `false` | deps.dev-URL bei jedem Eintrag ausgeben |
-| `showAll`           | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates |
+| `verbose`           | `Boolean` | `false` | Alle Dependencies anzeigen (inkl. aktueller) + deps.dev-URL bei jedem Eintrag |
+| `showAll`           | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates (von `verbose` impliziert) |
 | `failOnUpdates`     | `Boolean` | `false` | Build schlägt fehl, wenn mindestens ein Update verfügbar ist |
 | `includePreRelease` | `Boolean` | `false` | RC-, Alpha-, Beta- und Milestone-Versionen als neuere Version werten |
 
