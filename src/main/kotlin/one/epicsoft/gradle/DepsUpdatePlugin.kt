@@ -11,6 +11,9 @@ class DepsUpdatePlugin : Plugin<Project> {
             it.group = "dependency management"
             it.description = "Check for newer versions via deps.dev (libs.versions.toml + build.gradle)"
             it.verbose.set(extension.verbose)
+            it.showAll.set(extension.showAll)
+            it.failOnUpdates.set(extension.failOnUpdates)
+            it.includePreRelease.set(extension.includePreRelease)
         }
     }
 }

@@ -4,6 +4,7 @@ import one.epicsoft.gradle.api.DepsDevClient
 import one.epicsoft.gradle.parser.BuildGradleParser
 import one.epicsoft.gradle.parser.VersionCatalogParser
 import org.gradle.api.DefaultTask
+import org.gradle.api.GradleException
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
@@ -12,7 +13,15 @@ import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
-private data class DepResult(val message: String, val hasUpdate: Boolean)
+private data class DepResult(val coord: String, val current: String, val latest: String?, val hasUpdate: Boolean)
+
+private fun DepResult.format(verbose: Boolean): String {
+    val base = when {
+        hasUpdate -> "  ${coord.padEnd(60)}  $current  →  $latest"
+        else      -> "  ${coord.padEnd(60)}  $current"
+    }
+    return if (verbose) "$base\n    https://deps.dev/maven/$coord" else base
+}
 
 @DisableCachingByDefault(because = "Queries deps.dev API — result depends on external state")
 abstract class CheckUpdatesTask : DefaultTask() {
@@ -20,15 +29,23 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @get:Input
     abstract val verbose: Property<Boolean>
 
+    @get:Input
+    abstract val showAll: Property<Boolean>
+
+    @get:Input
+    abstract val failOnUpdates: Property<Boolean>
+
+    @get:Input
+    abstract val includePreRelease: Property<Boolean>
+
     @TaskAction
     fun checkUpdates() {
         val rootDir = project.rootDir
-        val client = DepsDevClient()
+        val client = DepsDevClient(includePreRelease.get())
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
 
         try {
-            // --- libs.versions.toml ---
             val versionCatalog = File(rootDir, "gradle/libs.versions.toml")
             if (versionCatalog.exists()) {
                 logger.lifecycle("Scanning: gradle/libs.versions.toml")
@@ -38,25 +55,19 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     jobs += executor.submit<DepResult?> {
                         val coord = "${lib.group}:${lib.name}"
                         val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
-                        if (latest != lib.version)
-                            DepResult("  [library] $coord  ${lib.version}  →  $latest", true)
-                        else
-                            DepResult("  [library] $coord  ${lib.version}", false)
+                        DepResult(coord, lib.version, latest, latest != lib.version)
                     }
                 }
 
                 catalog.plugins.forEach { plugin ->
                     jobs += executor.submit<DepResult?> {
-                        val latest = client.getLatestVersion("MAVEN", "${plugin.id}:${plugin.id}.gradle.plugin") ?: return@submit null
-                        if (latest != plugin.version)
-                            DepResult("  [plugin]  ${plugin.id}  ${plugin.version}  →  $latest", true)
-                        else
-                            DepResult("  [plugin]  ${plugin.id}  ${plugin.version}", false)
+                        val coord = "${plugin.id}:${plugin.id}.gradle.plugin"
+                        val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
+                        DepResult(plugin.id, plugin.version, latest, latest != plugin.version)
                     }
                 }
             }
 
-            // --- build.gradle / build.gradle.kts ---
             collectBuildFiles().forEach { file ->
                 logger.lifecycle("Scanning: ${file.relativeTo(rootDir)}")
                 val entries = BuildGradleParser.parse(file)
@@ -65,30 +76,27 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     jobs += executor.submit<DepResult?> {
                         val coord = "${dep.group}:${dep.name}"
                         val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
-                        if (latest != dep.version)
-                            DepResult("  [dep]     $coord  ${dep.version}  →  $latest", true)
-                        else
-                            DepResult("  [dep]     $coord  ${dep.version}", false)
+                        DepResult(coord, dep.version, latest, latest != dep.version)
                     }
                 }
 
                 entries.plugins.forEach { plugin ->
                     jobs += executor.submit<DepResult?> {
-                        val latest = client.getLatestVersion("MAVEN", "${plugin.id}:${plugin.id}.gradle.plugin") ?: return@submit null
-                        if (latest != plugin.version)
-                            DepResult("  [plugin]  ${plugin.id}  ${plugin.version}  →  $latest", true)
-                        else
-                            DepResult("  [plugin]  ${plugin.id}  ${plugin.version}", false)
+                        val coord = "${plugin.id}:${plugin.id}.gradle.plugin"
+                        val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
+                        DepResult(plugin.id, plugin.version, latest, latest != plugin.version)
                     }
                 }
             }
 
-            val results = jobs.mapNotNull { it.get() }.sortedBy { it.message }
+            val verbose = verbose.get()
+            val showAll = showAll.get()
+            val results = jobs.mapNotNull { it.get() }.sortedBy { it.coord }
             val updates = results.filter { it.hasUpdate }
 
-            if (verbose.get()) {
+            if (showAll) {
                 logger.lifecycle("\nChecked ${results.size} dependenc${if (results.size == 1) "y" else "ies"}:")
-                results.forEach { logger.lifecycle(it.message) }
+                results.forEach { logger.lifecycle(it.format(verbose)) }
                 if (updates.isEmpty())
                     logger.lifecycle("\nAll dependencies are up-to-date.")
                 else
@@ -98,9 +106,12 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     logger.lifecycle("\nAll dependencies are up-to-date.")
                 else {
                     logger.lifecycle("\nAvailable updates (${updates.size}):")
-                    updates.forEach { logger.lifecycle(it.message) }
+                    updates.forEach { logger.lifecycle(it.format(verbose)) }
                 }
             }
+
+            if (failOnUpdates.get() && updates.isNotEmpty())
+                throw GradleException("${updates.size} dependency update(s) available — failing build (failOnUpdates = true).")
         } finally {
             executor.shutdown()
         }

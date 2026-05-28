@@ -10,7 +10,7 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 
-class DepsDevClient {
+class DepsDevClient(private val includePreRelease: Boolean = false) {
 
     private val http: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
@@ -54,7 +54,7 @@ class DepsDevClient {
                 @Suppress("UNCHECKED_CAST")
                 (v["versionKey"] as? Map<String, Any>)?.get("version") as? String
             }
-            .filter { !isPreRelease(it) }
+            .filter { includePreRelease || !isPreRelease(it) }
             .maxWithOrNull { a, b -> compareVersions(a, b) }
     }
 
@@ -63,7 +63,7 @@ class DepsDevClient {
         return l.contains("snapshot") ||
                l.contains("alpha") ||
                l.contains("beta") ||
-               l.contains("-rc") ||
+               Regex("""[.\-]rc\d*""").containsMatchIn(l) ||
                PRERELEASE_M_REGEX.containsMatchIn(l)
     }
 

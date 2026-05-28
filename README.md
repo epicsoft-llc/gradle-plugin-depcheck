@@ -22,13 +22,19 @@ plugins {
 
 ```groovy
 depsUpdate {
-  verbose = true  // default: false
+  verbose           = true   // default: false — deps.dev URL bei jedem Eintrag anzeigen
+  showAll           = true   // default: false — alle geprüften Dependencies anzeigen, nicht nur Updates
+  failOnUpdates     = true   // default: false — Build fehlschlagen lassen, wenn Updates verfügbar sind
+  includePreRelease = true   // default: false — RC, Alpha, Beta, Milestone als gültige Updates werten
 }
 ```
 
 | Option | Typ | Default | Beschreibung |
 |---|---|---|---|
-| `verbose` | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates |
+| `verbose`           | `Boolean` | `false` | deps.dev-URL bei jedem Eintrag ausgeben |
+| `showAll`           | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates |
+| `failOnUpdates`     | `Boolean` | `false` | Build schlägt fehl, wenn mindestens ein Update verfügbar ist |
+| `includePreRelease` | `Boolean` | `false` | RC-, Alpha-, Beta- und Milestone-Versionen als neuere Version werten |
 
 ### 3. Task ausführen
 
@@ -38,27 +44,45 @@ depsUpdate {
 
 ### Beispielausgabe
 
-**Standard (`verbose = false`) — nur Updates:**
+**Standard (`verbose = false`, `showAll = false`) — nur Updates:**
 ```
 Scanning: gradle/libs.versions.toml
 Scanning: build.gradle
 Scanning: core/build.gradle
 
 Available updates (2):
-  [dep]     org.springframework.boot:spring-boot-starter  3.2.0  →  3.4.1
-  [plugin]  org.springframework.boot  3.2.0  →  3.4.1
+  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
+  org.springframework.boot                              3.2.0  →  3.4.1
 ```
 
-**Verbose (`verbose = true`) — alle Dependencies:**
+**`verbose = true` — Updates + deps.dev URL:**
 ```
-Scanning: gradle/libs.versions.toml
-Scanning: build.gradle
-Scanning: core/build.gradle
+Available updates (2):
+  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
+    https://deps.dev/maven/org.springframework.boot:spring-boot-starter
+  org.springframework.boot                              3.2.0  →  3.4.1
+    https://deps.dev/maven/org.springframework.boot:org.springframework.boot.gradle.plugin
+```
 
+**`showAll = true` — alle Dependencies:**
+```
 Checked 3 dependencies:
-  [dep]     com.fasterxml.jackson.core:jackson-databind   2.18.3
-  [dep]     org.springframework.boot:spring-boot-starter  3.2.0  →  3.4.1
-  [plugin]  org.springframework.boot  3.2.0  →  3.4.1
+  com.fasterxml.jackson.core:jackson-databind           2.18.3
+  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
+  org.springframework.boot                              3.2.0  →  3.4.1
+
+2 update(s) available.
+```
+
+**`showAll = true` + `verbose = true` — alle Dependencies mit URL:**
+```
+Checked 3 dependencies:
+  com.fasterxml.jackson.core:jackson-databind           2.18.3
+    https://deps.dev/maven/com.fasterxml.jackson.core:jackson-databind
+  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
+    https://deps.dev/maven/org.springframework.boot:spring-boot-starter
+  org.springframework.boot                              3.2.0  →  3.4.1
+    https://deps.dev/maven/org.springframework.boot:org.springframework.boot.gradle.plugin
 
 2 update(s) available.
 ```
