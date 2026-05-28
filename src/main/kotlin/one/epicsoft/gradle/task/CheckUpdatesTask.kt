@@ -13,14 +13,15 @@ import java.io.File
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
-private data class DepResult(val coord: String, val current: String, val latest: String?, val hasUpdate: Boolean)
+private data class DepResult(val label: String, val coord: String, val mavenCoord: String, val current: String, val latest: String?, val hasUpdate: Boolean)
 
 private fun DepResult.format(verbose: Boolean): String {
+    val prefix = "  [${label.padEnd(7)}]  "
     val base = when {
-        hasUpdate -> "  ${coord.padEnd(60)}  $current  →  $latest"
-        else      -> "  ${coord.padEnd(60)}  $current"
+        hasUpdate -> "$prefix${coord.padEnd(55)}  $current  →  $latest"
+        else      -> "$prefix${coord.padEnd(55)}  $current"
     }
-    return if (verbose) "$base\n    https://deps.dev/maven/$coord" else base
+    return if (verbose) "$base\n    https://deps.dev/maven/$mavenCoord" else base
 }
 
 @DisableCachingByDefault(because = "Queries deps.dev API — result depends on external state")
@@ -55,15 +56,15 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     jobs += executor.submit<DepResult?> {
                         val coord = "${lib.group}:${lib.name}"
                         val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
-                        DepResult(coord, lib.version, latest, latest != lib.version)
+                        DepResult("library", coord, coord, lib.version, latest, latest != lib.version)
                     }
                 }
 
                 catalog.plugins.forEach { plugin ->
                     jobs += executor.submit<DepResult?> {
-                        val coord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
-                        DepResult(plugin.id, plugin.version, latest, latest != plugin.version)
+                        val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
+                        val latest = client.getLatestVersion("MAVEN", mavenCoord) ?: return@submit null
+                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, latest != plugin.version)
                     }
                 }
             }
@@ -76,15 +77,15 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     jobs += executor.submit<DepResult?> {
                         val coord = "${dep.group}:${dep.name}"
                         val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
-                        DepResult(coord, dep.version, latest, latest != dep.version)
+                        DepResult("dep", coord, coord, dep.version, latest, latest != dep.version)
                     }
                 }
 
                 entries.plugins.forEach { plugin ->
                     jobs += executor.submit<DepResult?> {
-                        val coord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
-                        DepResult(plugin.id, plugin.version, latest, latest != plugin.version)
+                        val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
+                        val latest = client.getLatestVersion("MAVEN", mavenCoord) ?: return@submit null
+                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, latest != plugin.version)
                     }
                 }
             }
