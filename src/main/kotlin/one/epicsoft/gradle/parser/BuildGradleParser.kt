@@ -7,18 +7,22 @@ data class BuildGradleEntries(val dependencies: List<DependencyEntry>, val plugi
 
 object BuildGradleParser {
 
-    // Matches Groovy + Kotlin DSL:
+    // Matches Groovy + Kotlin DSL, single + double quotes:
     //   implementation "group:name:version"
+    //   implementation 'group:name:version'
     //   implementation("group:name:version")
+    //   implementation('group:name:version')
+    // Skips variable versions like ${someVersion}
     private val depRegex = Regex(
-        """(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|classpath)\s*[("]+\s*["']?([^"':()]+):([^"':()]+):([^"'@:()]+)["']?\s*[")]+"""
+        """(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|testCompileOnly|testAnnotationProcessor|annotationProcessor|developmentOnly|classpath)\s*\(?\s*["']([^"':()]+):([^"'@:()]+):([^"'@:()${}]+)["']\s*\)?"""
     )
 
-    // Matches Groovy + Kotlin DSL:
+    // Matches Groovy + Kotlin DSL, single + double quotes:
     //   id "plugin.id" version "x.y.z"
+    //   id 'plugin.id' version 'x.y.z'
     //   id("plugin.id") version "x.y.z"
     private val pluginRegex = Regex(
-        """id\s*[("]+([^"'()]+)[)"]+\s+version\s+["']([^"']+)["']"""
+        """id\s*\(?\s*["']([^"'()]+)["']\s*\)?\s+version\s+["']([^"']+)["']"""
     )
 
     fun parse(file: File): BuildGradleEntries {
