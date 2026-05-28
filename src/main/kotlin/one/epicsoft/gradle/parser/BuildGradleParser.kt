@@ -14,7 +14,7 @@ object BuildGradleParser {
     //   implementation('group:name:version')
     // Skips variable versions like ${someVersion}
     private val depRegex = Regex(
-        """(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|testCompileOnly|testAnnotationProcessor|annotationProcessor|developmentOnly|classpath)\s*\(?\s*["']([^"':()]+):([^"'@:()]+):([^"'@:()${}]+)["']\s*\)?"""
+        """(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|testCompileOnly|testAnnotationProcessor|annotationProcessor|developmentOnly|classpath)\s*\(?\s*["']([^"':()]+):([^"'@:()]+):([^"'@:()]+)["']\s*\)?"""
     )
 
     // Matches Groovy + Kotlin DSL, single + double quotes:
@@ -29,6 +29,7 @@ object BuildGradleParser {
         val content = file.readText()
         val dependencies = depRegex.findAll(content)
             .map { DependencyEntry(it.groupValues[1].trim(), it.groupValues[2].trim(), it.groupValues[3].trim()) }
+            .filter { !it.version.contains('$') }
             .distinctBy { "${it.group}:${it.name}" }
             .toList()
         val plugins = pluginRegex.findAll(content)
