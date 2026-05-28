@@ -1,0 +1,46 @@
+plugins {
+  id "java-gradle-plugin"
+  id "org.jetbrains.kotlin.jvm" version "2.3.20"
+  id "maven-publish"
+}
+
+group = "one.epicsoft"
+
+gradlePlugin {
+  plugins {
+    create("depsUpdate") {
+      id = "one.epicsoft.deps-update"
+      displayName = "Epicsoft Dependency Update Checker"
+      description = "Checks for newer versions of dependencies and Gradle plugins via the deps.dev API"
+      implementationClass = "one.epicsoft.gradle.DepsUpdatePlugin"
+    }
+  }
+}
+
+java {
+  toolchain {
+    languageVersion = JavaLanguageVersion.of(25)
+  }
+}
+
+dependencies {
+  implementation "com.google.code.gson:gson:2.11.0"
+}
+
+publishing {
+  repositories {
+    if (System.getenv("CI_JOB_TOKEN")) {
+      maven {
+        name = "gitlab"
+        url = "${System.getenv('CI_API_V4_URL')}/projects/${System.getenv('CI_PROJECT_ID')}/packages/maven"
+        credentials(HttpHeaderCredentials) {
+          name = "Job-Token"
+          value = System.getenv("CI_JOB_TOKEN")
+        }
+        authentication {
+          header(HttpHeaderAuthentication)
+        }
+      }
+    }
+  }
+}

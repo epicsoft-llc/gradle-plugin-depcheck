@@ -1,0 +1,37 @@
+stages:
+  - build
+  - publish
+
+variables:
+  GRADLE_OPTS: "-Dorg.gradle.daemon=false"
+  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
+
+before_script:
+  - chmod +x ./gradlew
+
+cache:
+  key: "$CI_COMMIT_REF_SLUG"
+  paths:
+    - .gradle/caches/
+    - .gradle/wrapper/
+
+build:
+  stage: build
+  image: epicsoft/openjdk:jdk25
+  script:
+    - ./gradlew build
+  artifacts:
+    paths:
+      - build/libs/*.jar
+    expire_in: 1 week
+
+publish:
+  stage: publish
+  image: epicsoft/openjdk:jdk25
+  needs:
+    - job: build
+      artifacts: true
+  script:
+    - ./gradlew publish
+  rules:
+    - if: $CI_COMMIT_TAG
