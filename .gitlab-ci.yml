@@ -32,6 +32,7 @@ publish:
     - job: build
       artifacts: true
   script:
-    - ./gradlew publish
+    - VERSION=${CI_COMMIT_TAG#v}
+    - ./gradlew publish -Pversion=$VERSION
   rules:
     - if: $CI_COMMIT_TAG
