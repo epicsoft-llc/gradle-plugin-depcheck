@@ -10,6 +10,7 @@ import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import java.io.File
+import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
@@ -43,6 +44,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
     fun checkUpdates() {
         val rootDir = project.rootDir
         val client = DepsDevClient(includePreRelease.get())
+        val gradleProperties = loadGradleProperties(rootDir)
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
 
@@ -71,7 +73,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
 
             collectBuildFiles().forEach { file ->
                 logger.lifecycle("Scanning: ${file.relativeTo(rootDir)}")
-                val entries = BuildGradleParser.parse(file)
+                val entries = BuildGradleParser.parse(file, gradleProperties)
 
                 entries.dependencies.forEach { dep ->
                     jobs += executor.submit<DepResult?> {
@@ -116,6 +118,13 @@ abstract class CheckUpdatesTask : DefaultTask() {
         } finally {
             executor.shutdown()
         }
+    }
+
+    private fun loadGradleProperties(rootDir: File): Properties {
+        val props = Properties()
+        File(rootDir, "gradle.properties").takeIf { it.exists() }
+            ?.inputStream()?.use { props.load(it) }
+        return props
     }
 
     private fun collectBuildFiles(): List<File> =
