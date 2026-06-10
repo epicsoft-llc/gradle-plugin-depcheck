@@ -14,7 +14,7 @@ Plugin in `build.gradle` hinzufügen:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.2.3"
+  id "one.epicsoft.deps-update" version "0.2.4"
 }
 ```
 
@@ -37,6 +37,7 @@ depsUpdate {
   ]
 
   checkGradleWrapper = true  // default: true — Gradle Wrapper Version prüfen
+  checkSubprojects   = false // default: true — nur Root-Build prüfen, Subprojekte ignorieren
 
   // Pflichtfelder, wenn Root-Projekt UND Subprojekt denselben Parameter setzen:
   excludeMode    = "MERGE"    // "MERGE" = zusammenführen, "OVERRIDE" = nur Subprojekt
@@ -53,6 +54,7 @@ depsUpdate {
 | `exclude`           | `List<String>` | `[]` | Koordinaten, die komplett übersprungen werden (`group:name` oder Plugin-ID) |
 | `maxVersion`        | `Map<String, String>` | `{}` | Versions-Präfix als Obergrenze pro Koordinate (z.B. `"3"` = nur 3.x.x, `"3.2"` = nur 3.2.x) |
 | `checkGradleWrapper` | `Boolean` | `true` | Gradle Wrapper Version über `services.gradle.org` prüfen |
+| `checkSubprojects`  | `Boolean` | `true` | `false` = Root-Task prüft nur das Root-`build.gradle` + nur dort referenzierte Catalog-Einträge |
 | `excludeMode`       | `String` | — | **Pflicht bei Kollision**: `"MERGE"` = root + sub zusammenführen; `"OVERRIDE"` = nur Subprojekt-Liste |
 | `maxVersionMode`    | `String` | — | **Pflicht bei Kollision**: `"MERGE"` = zusammenführen, Subprojekt gewinnt bei gleichem Key; `"OVERRIDE"` = nur Subprojekt-Map |
 
@@ -161,6 +163,7 @@ Beide Syntaxen (Groovy + Kotlin DSL) werden erkannt.
 | Task | Verhalten |
 |---|---|
 | `./gradlew checkDependencyUpdates` | Scannt `libs.versions.toml` (alle Einträge) + `build.gradle` aller Subprojekte |
+| `./gradlew checkDependencyUpdates` (`checkSubprojects = false`) | Scannt nur Root-`build.gradle` + nur dort referenzierte Catalog-Einträge |
 | `./gradlew :core:checkDependencyUpdates` | Scannt nur `core/build.gradle` — aus dem Version Catalog werden **nur die tatsächlich referenzierten** `libs.*`-Aliases geprüft |
 
 Catalog-Alias-Syntax (`implementation libs.someLib`) wird in Subprojekten automatisch aufgelöst und geprüft.
@@ -214,7 +217,7 @@ src/main/kotlin/one/epicsoft/gradle/
 ### Neue Version veröffentlichen
 
 1. `version` in `gradle.properties` erhöhen
-2. Git-Tag setzen: `git tag v0.2.3 && git push --tags`
+2. Git-Tag setzen: `git tag v0.2.4 && git push --tags`
 3. CI-Pipeline publiziert automatisch in die GitLab Package Registry
 4. In Consumer-Projekten die Version aktualisieren
 

@@ -63,6 +63,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @get:Input
     abstract val checkGradleWrapper: Property<Boolean>
 
+    @get:Input
+    abstract val checkSubprojects: Property<Boolean>
+
     @TaskAction
     fun checkUpdates() {
         val rootDir = project.rootDir
@@ -87,7 +90,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
 
                 val libraries: Iterable<LibraryEntry>
                 val plugins: Iterable<PluginEntry>
-                if (isRoot) {
+                if (isRoot && checkSubprojects.get()) {
                     libraries = catalog.libraries
                     plugins = catalog.plugins
                 } else {
@@ -220,10 +223,11 @@ abstract class CheckUpdatesTask : DefaultTask() {
     }
 
     private fun collectBuildFiles(): List<File> {
-        val projects = if (project == project.rootProject)
-            project.rootProject.allprojects
-        else
-            listOf(project)
+        val projects = when {
+            project != project.rootProject    -> listOf(project)
+            checkSubprojects.get()            -> project.rootProject.allprojects.toList()
+            else                              -> listOf(project.rootProject)
+        }
         return projects.flatMap { p ->
             listOf("build.gradle", "build.gradle.kts")
                 .map { File(p.projectDir, it) }

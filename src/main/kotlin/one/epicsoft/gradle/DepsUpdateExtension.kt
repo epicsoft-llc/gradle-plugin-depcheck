@@ -14,6 +14,7 @@ abstract class DepsUpdateExtension {
     abstract val exclude: ListProperty<String>
     abstract val maxVersion: MapProperty<String, String>
     abstract val checkGradleWrapper: Property<Boolean>
+    abstract val checkSubprojects: Property<Boolean>
 
     /** Required when both root and this subproject define [exclude]. Values: "MERGE" or "OVERRIDE". */
     abstract val excludeMode: Property<String>
@@ -29,5 +30,6 @@ abstract class DepsUpdateExtension {
         exclude.convention(emptyList())
         maxVersion.convention(emptyMap())
         checkGradleWrapper.convention(true)
+        checkSubprojects.convention(true)
     }
 }

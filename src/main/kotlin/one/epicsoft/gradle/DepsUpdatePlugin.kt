@@ -25,6 +25,7 @@ class DepsUpdatePlugin : Plugin<Project> {
             extension.failOnUpdates.convention(rootExt.failOnUpdates)
             extension.includePreRelease.convention(rootExt.includePreRelease)
             extension.checkGradleWrapper.convention(rootExt.checkGradleWrapper)
+            extension.checkSubprojects.convention(rootExt.checkSubprojects)
         }
 
         fun registerTask(target: Project, ext: DepsUpdateExtension) {
@@ -53,6 +54,7 @@ class DepsUpdatePlugin : Plugin<Project> {
                 it.exclude.set(effectiveExclude)
                 it.maxVersion.set(effectiveMaxVersion)
                 it.checkGradleWrapper.set(ext.checkGradleWrapper)
+                it.checkSubprojects.set(ext.checkSubprojects)
             }
         }
 
