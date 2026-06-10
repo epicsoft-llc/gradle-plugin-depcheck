@@ -65,9 +65,12 @@ abstract class CheckUpdatesTask : DefaultTask() {
         val buildFiles = collectBuildFiles()
 
         try {
-            val versionCatalog = File(rootDir, "gradle/libs.versions.toml")
-            if (versionCatalog.exists()) {
-                logger.lifecycle("Scanning: gradle/libs.versions.toml")
+            val versionCatalog = listOf(
+                File(rootDir, "gradle/libs.versions.toml"),
+                File(rootDir, "libs.versions.toml"),
+            ).firstOrNull { it.exists() }
+            if (versionCatalog != null) {
+                logger.lifecycle("Scanning: ${versionCatalog.relativeTo(rootDir)}")
                 val catalog = VersionCatalogParser.parse(versionCatalog)
 
                 val libraries: Iterable<LibraryEntry>
