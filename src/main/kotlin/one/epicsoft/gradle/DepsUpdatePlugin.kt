@@ -18,6 +18,7 @@ class DepsUpdatePlugin : Plugin<Project> {
                 it.includePreRelease.set(extension.includePreRelease)
                 it.exclude.set(extension.exclude)
                 it.maxVersion.set(extension.maxVersion)
+                it.checkGradleWrapper.set(extension.checkGradleWrapper)
             }
         }
 

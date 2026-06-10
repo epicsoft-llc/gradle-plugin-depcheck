@@ -14,7 +14,14 @@ import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
+import com.google.gson.Gson
+import com.google.gson.reflect.TypeToken
 import java.io.File
+import java.net.URI
+import java.net.http.HttpClient
+import java.net.http.HttpRequest
+import java.net.http.HttpResponse
+import java.time.Duration
 import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
@@ -50,6 +57,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
 
     @get:Input
     abstract val maxVersion: MapProperty<String, String>
+
+    @get:Input
+    abstract val checkGradleWrapper: Property<Boolean>
 
     @TaskAction
     fun checkUpdates() {
@@ -130,6 +140,13 @@ abstract class CheckUpdatesTask : DefaultTask() {
                 }
             }
 
+            if (checkGradleWrapper.get()) {
+                val wrapperResult = executor.submit<DepResult?> {
+                    checkGradleWrapperVersion(rootDir, includePreRelease.get())
+                }
+                jobs += wrapperResult
+            }
+
             val verbose = verbose.get()
             val showAll = showAll.get() || verbose
             val results = jobs.mapNotNull { it.get() }.sortedBy { it.coord }
@@ -163,6 +180,41 @@ abstract class CheckUpdatesTask : DefaultTask() {
         File(rootDir, "gradle.properties").takeIf { it.exists() }
             ?.inputStream()?.use { props.load(it) }
         return props
+    }
+
+    private fun checkGradleWrapperVersion(rootDir: File, includePreRelease: Boolean): DepResult? {
+        val wrapperProps = File(rootDir, "gradle/wrapper/gradle-wrapper.properties")
+        if (!wrapperProps.exists()) return null
+
+        val props = Properties()
+        wrapperProps.inputStream().use { props.load(it) }
+        val distUrl = props.getProperty("distributionUrl") ?: return null
+        val current = Regex("""gradle-([0-9]+(?:\.[0-9]+(?:\.[0-9]+)?)?(?:-[a-zA-Z0-9]+)?)-""")
+            .find(distUrl)?.groupValues?.get(1) ?: return null
+
+        val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
+        val gson = Gson()
+
+        fun fetchVersion(endpoint: String): String? {
+            val req = HttpRequest.newBuilder(URI.create("https://services.gradle.org/versions/$endpoint"))
+                .GET().timeout(Duration.ofSeconds(15)).build()
+            return try {
+                val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
+                if (resp.statusCode() != 200) return null
+                val type = object : TypeToken<Map<String, Any>>() {}.type
+                val map: Map<String, Any> = gson.fromJson(resp.body(), type)
+                if (map["broken"] == true || map["snapshot"] == true || map["nightly"] == true) return null
+                map["version"] as? String
+            } catch (_: Exception) { null }
+        }
+
+        val latest = if (includePreRelease)
+            fetchVersion("release-candidate") ?: fetchVersion("current")
+        else
+            fetchVersion("current")
+
+        latest ?: return null
+        return DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, latest, latest != current)
     }
 
     private fun collectBuildFiles(): List<File> {

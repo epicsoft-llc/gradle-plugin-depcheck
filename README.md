@@ -14,7 +14,7 @@ Plugin in `build.gradle` hinzufügen:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.1.4"
+  id "one.epicsoft.deps-update" version "0.1.5"
 }
 ```
 
@@ -35,6 +35,8 @@ depsUpdate {
     "org.springframework.boot:spring-boot-starter": "3",   // nur 3.x.x
     "org.springframework.boot"                    : "3.2"  // nur 3.2.x
   ]
+
+  checkGradleWrapper = true  // default: true — Gradle Wrapper Version prüfen
 }
 ```
 
@@ -46,6 +48,7 @@ depsUpdate {
 | `includePreRelease` | `Boolean` | `false` | RC-, Alpha-, Beta- und Milestone-Versionen als neuere Version werten |
 | `exclude`           | `List<String>` | `[]` | Koordinaten, die komplett übersprungen werden (`group:name` oder Plugin-ID) |
 | `maxVersion`        | `Map<String, String>` | `{}` | Versions-Präfix als Obergrenze pro Koordinate (z.B. `"3"` = nur 3.x.x, `"3.2"` = nur 3.2.x) |
+| `checkGradleWrapper` | `Boolean` | `true` | Gradle Wrapper Version über `services.gradle.org` prüfen |
 
 ### 3. Task ausführen
 
@@ -167,7 +170,7 @@ src/main/kotlin/one/epicsoft/gradle/
 ### Neue Version veröffentlichen
 
 1. `version` in `gradle.properties` erhöhen
-2. Git-Tag setzen: `git tag v0.1.4 && git push --tags`
+2. Git-Tag setzen: `git tag v0.1.5 && git push --tags`
 3. CI-Pipeline publiziert automatisch in die GitLab Package Registry
 4. In Consumer-Projekten die Version aktualisieren
 

@@ -11,6 +11,7 @@ abstract class DepsUpdateExtension {
     abstract val includePreRelease: Property<Boolean>
     abstract val exclude: ListProperty<String>
     abstract val maxVersion: MapProperty<String, String>
+    abstract val checkGradleWrapper: Property<Boolean>
 
     init {
         verbose.convention(false)
@@ -19,5 +20,6 @@ abstract class DepsUpdateExtension {
         includePreRelease.convention(false)
         exclude.convention(emptyList())
         maxVersion.convention(emptyMap())
+        checkGradleWrapper.convention(true)
     }
 }
