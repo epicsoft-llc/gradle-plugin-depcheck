@@ -57,6 +57,7 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
                 (v["versionKey"] as? Map<String, Any>)?.get("version") as? String
             }
             .filter { includePreRelease || !isPreRelease(it) }
+            .filter { !isLegacyTimestamp(it) }
             .filter { v -> versionPrefix == null || matchesVersionPrefix(v, versionPrefix) }
             .maxWithOrNull { a, b -> compareVersions(a, b) }
     }
@@ -68,6 +69,9 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
             vParts.getOrNull(i)?.toIntOrNull() == pParts[i].toIntOrNull()
         }
     }
+
+    private fun isLegacyTimestamp(v: String): Boolean =
+        VERSION_SPLIT_REGEX.split(v).any { (it.toIntOrNull() ?: 0) > 99999 }
 
     private fun isPreRelease(v: String): Boolean {
         val l = v.lowercase()
