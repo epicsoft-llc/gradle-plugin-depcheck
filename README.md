@@ -14,7 +14,7 @@ Plugin in `build.gradle` hinzufügen:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.2.2"
+  id "one.epicsoft.deps-update" version "0.2.3"
 }
 ```
 
@@ -201,7 +201,7 @@ src/main/kotlin/one/epicsoft/gradle/
 ### Neue Version veröffentlichen
 
 1. `version` in `gradle.properties` erhöhen
-2. Git-Tag setzen: `git tag v0.2.2 && git push --tags`
+2. Git-Tag setzen: `git tag v0.2.3 && git push --tags`
 3. CI-Pipeline publiziert automatisch in die GitLab Package Registry
 4. In Consumer-Projekten die Version aktualisieren
 

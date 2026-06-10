@@ -1,6 +1,5 @@
 package one.epicsoft.gradle.task
 
-import one.epicsoft.gradle.CollectionInheritMode
 import one.epicsoft.gradle.api.DepsDevClient
 import one.epicsoft.gradle.parser.BuildGradleParser
 import one.epicsoft.gradle.parser.CatalogAliasUsages
@@ -13,7 +12,6 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
-import org.gradle.api.tasks.Optional
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import com.google.gson.Gson
@@ -65,26 +63,12 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @get:Input
     abstract val checkGradleWrapper: Property<Boolean>
 
-    @get:Input
-    abstract val rootExclude: ListProperty<String>
-
-    @get:Input
-    abstract val rootMaxVersion: MapProperty<String, String>
-
-    @get:Input
-    @get:Optional
-    abstract val excludeMode: Property<String>
-
-    @get:Input
-    @get:Optional
-    abstract val maxVersionMode: Property<String>
-
     @TaskAction
     fun checkUpdates() {
         val rootDir = project.rootDir
         val client = DepsDevClient(includePreRelease.get())
-        val excludeSet = resolveList("exclude", exclude.get(), rootExclude.get(), parseMode("excludeMode", excludeMode.orNull)).toSet()
-        val maxVersionMap = resolveMap("maxVersion", maxVersion.get(), rootMaxVersion.get(), parseMode("maxVersionMode", maxVersionMode.orNull))
+        val excludeSet = exclude.get().toSet()
+        val maxVersionMap = maxVersion.get()
         val gradleProperties = loadGradleProperties(rootDir)
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
@@ -190,48 +174,6 @@ abstract class CheckUpdatesTask : DefaultTask() {
                 throw GradleException("${updates.size} dependency update(s) available — failing build (failOnUpdates = true).")
         } finally {
             executor.shutdown()
-        }
-    }
-
-    private fun parseMode(paramName: String, raw: String?): CollectionInheritMode? {
-        if (raw == null) return null
-        return CollectionInheritMode.entries.firstOrNull { it.name.equals(raw.trim(), ignoreCase = true) }
-            ?: throw GradleException("depsUpdate.$paramName has invalid value \"$raw\". Use \"MERGE\" or \"OVERRIDE\".")
-    }
-
-    private fun resolveList(
-        paramName: String,
-        sub: List<String>,
-        parent: List<String>,
-        mode: CollectionInheritMode?,
-    ): List<String> = when {
-        parent.isEmpty() -> sub
-        sub.isEmpty()    -> parent
-        else -> when (mode) {
-            CollectionInheritMode.MERGE    -> (parent + sub).distinct()
-            CollectionInheritMode.OVERRIDE -> sub
-            null -> throw GradleException(
-                "depsUpdate.$paramName is defined in both the root project and ${project.path}. " +
-                "Set depsUpdate { ${paramName}Mode = CollectionInheritMode.MERGE } or OVERRIDE to resolve the conflict."
-            )
-        }
-    }
-
-    private fun resolveMap(
-        paramName: String,
-        sub: Map<String, String>,
-        parent: Map<String, String>,
-        mode: CollectionInheritMode?,
-    ): Map<String, String> = when {
-        parent.isEmpty() -> sub
-        sub.isEmpty()    -> parent
-        else -> when (mode) {
-            CollectionInheritMode.MERGE    -> parent + sub  // sub wins on key conflicts
-            CollectionInheritMode.OVERRIDE -> sub
-            null -> throw GradleException(
-                "depsUpdate.$paramName is defined in both the root project and ${project.path}. " +
-                "Set depsUpdate { ${paramName}Mode = CollectionInheritMode.MERGE } or OVERRIDE to resolve the conflict."
-            )
         }
     }
 

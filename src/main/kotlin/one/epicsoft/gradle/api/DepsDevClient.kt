@@ -19,9 +19,10 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
     private val gson: Gson = Gson()
 
     companion object {
-        private val PRERELEASE_M_REGEX  = Regex("""-m\d+$""")
-        private val PRERELEASE_RC_REGEX = Regex("""[.\-]rc\d*""")
-        private val PRERELEASE_CR_REGEX = Regex("""[.\-]cr\d*""")
+        private val PRERELEASE_M_REGEX     = Regex("""-m\d+$""")
+        private val PRERELEASE_RC_REGEX    = Regex("""[.\-]rc\d*""")
+        private val PRERELEASE_CR_REGEX    = Regex("""[.\-]cr\d*""")
+        private val PRERELEASE_BUILD_REGEX = Regex("""[.\-]b\d+""")  // e.g. 2.4.0-b180725.0427
         private val VERSION_SPLIT_REGEX = Regex("[.\\-]")
     }
 
@@ -80,7 +81,8 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
                l.contains("beta") ||
                PRERELEASE_RC_REGEX.containsMatchIn(l) ||
                PRERELEASE_CR_REGEX.containsMatchIn(l) ||
-               PRERELEASE_M_REGEX.containsMatchIn(l)
+               PRERELEASE_M_REGEX.containsMatchIn(l) ||
+               PRERELEASE_BUILD_REGEX.containsMatchIn(l)
     }
 
     private fun compareVersions(a: String, b: String): Int {
