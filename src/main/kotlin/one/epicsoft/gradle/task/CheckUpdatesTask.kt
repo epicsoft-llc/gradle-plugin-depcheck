@@ -73,18 +73,18 @@ abstract class CheckUpdatesTask : DefaultTask() {
 
     @get:Input
     @get:Optional
-    abstract val excludeMode: Property<CollectionInheritMode>
+    abstract val excludeMode: Property<String>
 
     @get:Input
     @get:Optional
-    abstract val maxVersionMode: Property<CollectionInheritMode>
+    abstract val maxVersionMode: Property<String>
 
     @TaskAction
     fun checkUpdates() {
         val rootDir = project.rootDir
         val client = DepsDevClient(includePreRelease.get())
-        val excludeSet = resolveList("exclude", exclude.get(), rootExclude.get(), excludeMode.orNull).toSet()
-        val maxVersionMap = resolveMap("maxVersion", maxVersion.get(), rootMaxVersion.get(), maxVersionMode.orNull)
+        val excludeSet = resolveList("exclude", exclude.get(), rootExclude.get(), parseMode("excludeMode", excludeMode.orNull)).toSet()
+        val maxVersionMap = resolveMap("maxVersion", maxVersion.get(), rootMaxVersion.get(), parseMode("maxVersionMode", maxVersionMode.orNull))
         val gradleProperties = loadGradleProperties(rootDir)
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
@@ -191,6 +191,12 @@ abstract class CheckUpdatesTask : DefaultTask() {
         } finally {
             executor.shutdown()
         }
+    }
+
+    private fun parseMode(paramName: String, raw: String?): CollectionInheritMode? {
+        if (raw == null) return null
+        return CollectionInheritMode.entries.firstOrNull { it.name.equals(raw.trim(), ignoreCase = true) }
+            ?: throw GradleException("depsUpdate.$paramName has invalid value \"$raw\". Use \"MERGE\" or \"OVERRIDE\".")
     }
 
     private fun resolveList(

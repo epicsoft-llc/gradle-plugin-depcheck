@@ -15,11 +15,11 @@ abstract class DepsUpdateExtension {
     abstract val maxVersion: MapProperty<String, String>
     abstract val checkGradleWrapper: Property<Boolean>
 
-    /** Required when both root and this subproject define [exclude]. */
-    abstract val excludeMode: Property<CollectionInheritMode>
+    /** Required when both root and this subproject define [exclude]. Values: "MERGE" or "OVERRIDE". */
+    abstract val excludeMode: Property<String>
 
-    /** Required when both root and this subproject define [maxVersion]. */
-    abstract val maxVersionMode: Property<CollectionInheritMode>
+    /** Required when both root and this subproject define [maxVersion]. Values: "MERGE" or "OVERRIDE". */
+    abstract val maxVersionMode: Property<String>
 
     init {
         verbose.convention(false)
