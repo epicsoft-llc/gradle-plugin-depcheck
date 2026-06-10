@@ -25,7 +25,7 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
         private val VERSION_SPLIT_REGEX = Regex("[.\\-]")
     }
 
-    fun getLatestVersion(system: String, packageName: String): String? {
+    fun getLatestVersion(system: String, packageName: String, versionPrefix: String? = null): String? {
         val encoded = URLEncoder.encode(packageName, StandardCharsets.UTF_8)
         val request = HttpRequest.newBuilder(
             URI.create("https://api.deps.dev/v3/systems/$system/packages/$encoded")
@@ -37,13 +37,13 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
         return try {
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() != 200) return null
-            parseLatest(response.body())
+            parseLatest(response.body(), versionPrefix)
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun parseLatest(json: String): String? {
+    private fun parseLatest(json: String, versionPrefix: String? = null): String? {
         val type = object : TypeToken<Map<String, Any>>() {}.type
         val map: Map<String, Any> = gson.fromJson(json, type)
 
@@ -57,7 +57,16 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
                 (v["versionKey"] as? Map<String, Any>)?.get("version") as? String
             }
             .filter { includePreRelease || !isPreRelease(it) }
+            .filter { v -> versionPrefix == null || matchesVersionPrefix(v, versionPrefix) }
             .maxWithOrNull { a, b -> compareVersions(a, b) }
+    }
+
+    private fun matchesVersionPrefix(version: String, prefix: String): Boolean {
+        val vParts = version.split(VERSION_SPLIT_REGEX)
+        val pParts = prefix.split(VERSION_SPLIT_REGEX)
+        return pParts.indices.all { i ->
+            vParts.getOrNull(i)?.toIntOrNull() == pParts[i].toIntOrNull()
+        }
     }
 
     private fun isPreRelease(v: String): Boolean {

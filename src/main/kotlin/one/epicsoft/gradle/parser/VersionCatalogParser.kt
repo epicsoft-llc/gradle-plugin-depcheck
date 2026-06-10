@@ -4,18 +4,30 @@ import java.io.File
 
 data class LibraryEntry(val group: String, val name: String, val version: String)
 data class PluginEntry(val id: String, val version: String)
-data class VersionCatalog(val libraries: List<LibraryEntry>, val plugins: List<PluginEntry>)
+
+data class VersionCatalog(
+    val libraries: List<LibraryEntry>,
+    val plugins: List<PluginEntry>,
+    val libraryByAccessor: Map<String, LibraryEntry>,
+    val pluginByAccessor: Map<String, PluginEntry>,
+)
 
 object VersionCatalogParser {
 
     fun parse(file: File): VersionCatalog {
         val sections = parseSections(file.readText())
         val versions = parseVersions(sections["versions"] ?: "")
+        val libPairs = parseLibraries(sections["libraries"] ?: "", versions)
+        val pluginPairs = parsePlugins(sections["plugins"] ?: "", versions)
         return VersionCatalog(
-            libraries = parseLibraries(sections["libraries"] ?: "", versions),
-            plugins   = parsePlugins(sections["plugins"] ?: "", versions),
+            libraries = libPairs.map { it.second },
+            plugins = pluginPairs.map { it.second },
+            libraryByAccessor = libPairs.associate { (alias, entry) -> aliasToAccessor(alias) to entry },
+            pluginByAccessor = pluginPairs.associate { (alias, entry) -> aliasToAccessor(alias) to entry },
         )
     }
+
+    fun aliasToAccessor(alias: String): String = alias.replace('-', '.')
 
     private fun parseSections(content: String): Map<String, String> {
         val result = mutableMapOf<String, StringBuilder>()
@@ -38,36 +50,49 @@ object VersionCatalogParser {
                 ?.let { it.groupValues[1] to it.groupValues[2] }
         }.toMap()
 
-    private fun parseLibraries(section: String, versions: Map<String, String>): List<LibraryEntry> =
+    private fun parseLibraries(section: String, versions: Map<String, String>): List<Pair<String, LibraryEntry>> =
         section.lines().mapNotNull { line ->
             val t = line.trim()
             if (t.isEmpty() || t.startsWith("#")) return@mapNotNull null
+
+            val alias = Regex("""^([\w-]+)\s*=""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
 
             // String notation: alias = "group:name:version"
-            Regex("""^[\w-]+\s*=\s*["']([^"']+):([^"']+):([^"']+)["']""").find(t)?.let {
-                return@mapNotNull LibraryEntry(it.groupValues[1], it.groupValues[2], it.groupValues[3])
+            Regex("""["']([^"']+):([^"']+):([^"']+)["']""").find(t)?.let {
+                return@mapNotNull alias to LibraryEntry(it.groupValues[1], it.groupValues[2], it.groupValues[3])
             }
 
-            // Inline table notation: { group = "...", name = "...", version[.ref] = "..." }
-            val group   = Regex("""group\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
-            val name    = Regex("""name\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)  ?: return@mapNotNull null
-            val vRef    = Regex("""version\.ref\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
-            val vDirect = Regex("""version\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
+            // Module shorthand: { module = "group:name", version.ref = "..." }
+            Regex("""module\s*=\s*["']([^"':]+):([^"':]+)["']""").find(t)?.let { moduleMatch ->
+                val group = moduleMatch.groupValues[1]
+                val name = moduleMatch.groupValues[2]
+                val vRef = Regex("""version\.ref\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
+                val vDirect = Regex("""(?<!\.)version\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
+                val version = versions[vRef] ?: vDirect ?: return@mapNotNull null
+                return@mapNotNull alias to LibraryEntry(group, name, version)
+            }
+
+            // Inline table: { group = "...", name = "...", version[.ref] = "..." }
+            val group = Regex("""group\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
+            val name = Regex("""name\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
+            val vRef = Regex("""version\.ref\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
+            val vDirect = Regex("""(?<!\.)version\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
             val version = versions[vRef] ?: vDirect ?: return@mapNotNull null
 
-            LibraryEntry(group, name, version)
+            alias to LibraryEntry(group, name, version)
         }
 
-    private fun parsePlugins(section: String, versions: Map<String, String>): List<PluginEntry> =
+    private fun parsePlugins(section: String, versions: Map<String, String>): List<Pair<String, PluginEntry>> =
         section.lines().mapNotNull { line ->
             val t = line.trim()
             if (t.isEmpty() || t.startsWith("#")) return@mapNotNull null
 
-            val id      = Regex("""id\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
-            val vRef    = Regex("""version\.ref\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
-            val vDirect = Regex("""version\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
+            val alias = Regex("""^([\w-]+)\s*=""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
+            val id = Regex("""id\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1) ?: return@mapNotNull null
+            val vRef = Regex("""version\.ref\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
+            val vDirect = Regex("""(?<!\.)version\s*=\s*["']([^"']+)["']""").find(t)?.groupValues?.get(1)
             val version = versions[vRef] ?: vDirect ?: return@mapNotNull null
 
-            PluginEntry(id, version)
+            alias to PluginEntry(id, version)
         }
 }

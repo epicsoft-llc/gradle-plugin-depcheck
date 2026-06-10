@@ -5,8 +5,11 @@ import java.util.Properties
 
 data class DependencyEntry(val group: String, val name: String, val version: String)
 data class BuildGradleEntries(val dependencies: List<DependencyEntry>, val plugins: List<PluginEntry>)
+data class CatalogAliasUsages(val libraryAccessors: Set<String>, val pluginAccessors: Set<String>)
 
 object BuildGradleParser {
+
+    private val catalogAliasRegex = Regex("""libs\.([a-zA-Z][a-zA-Z0-9.]*)""")
 
     private val depRegex = Regex(
         """(?:implementation|api|compileOnly|runtimeOnly|testImplementation|testRuntimeOnly|testCompileOnly|testAnnotationProcessor|annotationProcessor|developmentOnly|classpath)\s*\(?\s*["']([^"':()]+):([^"'@:()]+):([^"'@:()]+)["']\s*\)?"""
@@ -22,6 +25,20 @@ object BuildGradleParser {
     private val localVarRegex = Regex(
         """(?:(?:final\s+)?(?:def|val)\s+|ext\.)(\w+)\s*=\s*["']([^"']+)["']"""
     )
+
+    fun extractCatalogAliases(file: File): CatalogAliasUsages {
+        val libraryAccessors = mutableSetOf<String>()
+        val pluginAccessors = mutableSetOf<String>()
+        catalogAliasRegex.findAll(file.readText()).forEach { match ->
+            val accessor = match.groupValues[1].trimEnd('.')
+            when {
+                accessor.startsWith("plugins.") -> pluginAccessors += accessor.removePrefix("plugins.")
+                accessor.startsWith("versions.") -> {}
+                else -> libraryAccessors += accessor
+            }
+        }
+        return CatalogAliasUsages(libraryAccessors, pluginAccessors)
+    }
 
     fun parse(file: File, properties: Properties = Properties()): BuildGradleEntries {
         val content = file.readText()

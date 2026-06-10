@@ -16,6 +16,8 @@ class DepsUpdatePlugin : Plugin<Project> {
                 it.showAll.set(extension.showAll)
                 it.failOnUpdates.set(extension.failOnUpdates)
                 it.includePreRelease.set(extension.includePreRelease)
+                it.exclude.set(extension.exclude)
+                it.maxVersion.set(extension.maxVersion)
             }
         }
 

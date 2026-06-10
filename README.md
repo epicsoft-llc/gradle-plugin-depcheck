@@ -14,7 +14,7 @@ Plugin in `build.gradle` hinzufügen:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.0.1"
+  id "one.epicsoft.deps-update" version "0.1.3"
 }
 ```
 
@@ -26,6 +26,15 @@ depsUpdate {
   showAll           = true   // default: false — alle geprüften Dependencies anzeigen, nicht nur Updates
   failOnUpdates     = true   // default: false — Build fehlschlagen lassen, wenn Updates verfügbar sind
   includePreRelease = true   // default: false — RC, Alpha, Beta, Milestone als gültige Updates werten
+
+  // Koordinaten von der Prüfung ausschließen (group:name für Libraries, Plugin-ID für Plugins)
+  exclude = ["com.example:some-lib", "org.some.plugin"]
+
+  // Versions-Obergrenze pro Koordinate — nur Updates innerhalb des Präfix werden gemeldet
+  maxVersion = [
+    "org.springframework.boot:spring-boot-starter": "3",   // nur 3.x.x
+    "org.springframework.boot"                    : "3.2"  // nur 3.2.x
+  ]
 }
 ```
 
@@ -35,6 +44,8 @@ depsUpdate {
 | `showAll`           | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates (von `verbose` impliziert) |
 | `failOnUpdates`     | `Boolean` | `false` | Build schlägt fehl, wenn mindestens ein Update verfügbar ist |
 | `includePreRelease` | `Boolean` | `false` | RC-, Alpha-, Beta- und Milestone-Versionen als neuere Version werten |
+| `exclude`           | `List<String>` | `[]` | Koordinaten, die komplett übersprungen werden (`group:name` oder Plugin-ID) |
+| `maxVersion`        | `Map<String, String>` | `{}` | Versions-Präfix als Obergrenze pro Koordinate (z.B. `"3"` = nur 3.x.x, `"3.2"` = nur 3.2.x) |
 
 ### 3. Task ausführen
 
@@ -93,10 +104,19 @@ Checked 3 dependencies:
 
 | Quelle | Inhalt |
 |---|---|
-| `gradle/libs.versions.toml` | `[libraries]` und `[plugins]` (inkl. `version.ref`-Auflösung) |
+| `gradle/libs.versions.toml` | `[libraries]` und `[plugins]` (inkl. `version.ref`-Auflösung, alle Notationen) |
 | `build.gradle` / `build.gradle.kts` | `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation`, `classpath` + `plugins {}`-Block |
 
-Gescannt werden Root-Projekt und alle Subprojekte. Beide Syntaxen (Groovy + Kotlin DSL) werden erkannt.
+Beide Syntaxen (Groovy + Kotlin DSL) werden erkannt.
+
+### Verhalten bei Subprojekten
+
+| Task | Verhalten |
+|---|---|
+| `./gradlew checkDependencyUpdates` | Scannt `libs.versions.toml` (alle Einträge) + `build.gradle` aller Subprojekte |
+| `./gradlew :core:checkDependencyUpdates` | Scannt nur `core/build.gradle` — aus dem Version Catalog werden **nur die tatsächlich referenzierten** `libs.*`-Aliases geprüft |
+
+Catalog-Alias-Syntax (`implementation libs.someLib`) wird in Subprojekten automatisch aufgelöst und geprüft.
 
 ---
 
@@ -147,7 +167,7 @@ src/main/kotlin/one/epicsoft/gradle/
 ### Neue Version veröffentlichen
 
 1. `version` in `gradle.properties` erhöhen
-2. Git-Tag setzen: `git tag v0.0.2 && git push --tags`
+2. Git-Tag setzen: `git tag v0.1.3 && git push --tags`
 3. CI-Pipeline publiziert automatisch in die GitLab Package Registry
 4. In Consumer-Projekten die Version aktualisieren
 

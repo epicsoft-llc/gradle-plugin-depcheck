@@ -2,9 +2,14 @@ package one.epicsoft.gradle.task
 
 import one.epicsoft.gradle.api.DepsDevClient
 import one.epicsoft.gradle.parser.BuildGradleParser
+import one.epicsoft.gradle.parser.CatalogAliasUsages
+import one.epicsoft.gradle.parser.LibraryEntry
+import one.epicsoft.gradle.parser.PluginEntry
 import one.epicsoft.gradle.parser.VersionCatalogParser
 import org.gradle.api.DefaultTask
 import org.gradle.api.GradleException
+import org.gradle.api.provider.ListProperty
+import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
 import org.gradle.api.tasks.TaskAction
@@ -40,13 +45,24 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @get:Input
     abstract val includePreRelease: Property<Boolean>
 
+    @get:Input
+    abstract val exclude: ListProperty<String>
+
+    @get:Input
+    abstract val maxVersion: MapProperty<String, String>
+
     @TaskAction
     fun checkUpdates() {
         val rootDir = project.rootDir
         val client = DepsDevClient(includePreRelease.get())
+        val excludeSet = exclude.get().toSet()
+        val maxVersionMap = maxVersion.get()
         val gradleProperties = loadGradleProperties(rootDir)
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
+
+        val isRoot = project == project.rootProject
+        val buildFiles = collectBuildFiles()
 
         try {
             val versionCatalog = File(rootDir, "gradle/libs.versions.toml")
@@ -54,39 +70,58 @@ abstract class CheckUpdatesTask : DefaultTask() {
                 logger.lifecycle("Scanning: gradle/libs.versions.toml")
                 val catalog = VersionCatalogParser.parse(versionCatalog)
 
-                catalog.libraries.forEach { lib ->
+                val libraries: Iterable<LibraryEntry>
+                val plugins: Iterable<PluginEntry>
+                if (isRoot) {
+                    libraries = catalog.libraries
+                    plugins = catalog.plugins
+                } else {
+                    val usedAliases = buildFiles
+                        .map { BuildGradleParser.extractCatalogAliases(it) }
+                        .fold(CatalogAliasUsages(emptySet(), emptySet())) { acc, u ->
+                            CatalogAliasUsages(acc.libraryAccessors + u.libraryAccessors, acc.pluginAccessors + u.pluginAccessors)
+                        }
+                    libraries = usedAliases.libraryAccessors.mapNotNull { catalog.libraryByAccessor[it] }
+                    plugins = usedAliases.pluginAccessors.mapNotNull { catalog.pluginByAccessor[it] }
+                }
+
+                libraries.forEach { lib ->
+                    val coord = "${lib.group}:${lib.name}"
+                    if (coord in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
-                        val coord = "${lib.group}:${lib.name}"
-                        val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
+                        val latest = client.getLatestVersion("MAVEN", coord, maxVersionMap[coord]) ?: return@submit null
                         DepResult("library", coord, coord, lib.version, latest, latest != lib.version)
                     }
                 }
 
-                catalog.plugins.forEach { plugin ->
+                plugins.forEach { plugin ->
+                    if (plugin.id in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
                         val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val latest = client.getLatestVersion("MAVEN", mavenCoord) ?: return@submit null
+                        val latest = client.getLatestVersion("MAVEN", mavenCoord, maxVersionMap[plugin.id]) ?: return@submit null
                         DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, latest != plugin.version)
                     }
                 }
             }
 
-            collectBuildFiles().forEach { file ->
+            buildFiles.forEach { file ->
                 logger.lifecycle("Scanning: ${file.relativeTo(rootDir)}")
                 val entries = BuildGradleParser.parse(file, gradleProperties)
 
                 entries.dependencies.forEach { dep ->
+                    val coord = "${dep.group}:${dep.name}"
+                    if (coord in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
-                        val coord = "${dep.group}:${dep.name}"
-                        val latest = client.getLatestVersion("MAVEN", coord) ?: return@submit null
+                        val latest = client.getLatestVersion("MAVEN", coord, maxVersionMap[coord]) ?: return@submit null
                         DepResult("dep", coord, coord, dep.version, latest, latest != dep.version)
                     }
                 }
 
                 entries.plugins.forEach { plugin ->
+                    if (plugin.id in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
                         val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val latest = client.getLatestVersion("MAVEN", mavenCoord) ?: return@submit null
+                        val latest = client.getLatestVersion("MAVEN", mavenCoord, maxVersionMap[plugin.id]) ?: return@submit null
                         DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, latest != plugin.version)
                     }
                 }
@@ -127,10 +162,15 @@ abstract class CheckUpdatesTask : DefaultTask() {
         return props
     }
 
-    private fun collectBuildFiles(): List<File> =
-        project.rootProject.allprojects.flatMap { p ->
+    private fun collectBuildFiles(): List<File> {
+        val projects = if (project == project.rootProject)
+            project.rootProject.allprojects
+        else
+            listOf(project)
+        return projects.flatMap { p ->
             listOf("build.gradle", "build.gradle.kts")
                 .map { File(p.projectDir, it) }
                 .filter { it.exists() }
         }
+    }
 }
