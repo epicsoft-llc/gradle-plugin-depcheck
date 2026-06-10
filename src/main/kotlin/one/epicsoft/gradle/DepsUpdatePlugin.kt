@@ -6,9 +6,13 @@ import org.gradle.api.Project
 
 class DepsUpdatePlugin : Plugin<Project> {
     override fun apply(project: Project) {
+        // Guard against double-registration (e.g. applied to root + subprojects { apply plugin: ... })
+        if (project.extensions.findByName("depsUpdate") != null) return
+
         val extension = project.extensions.create("depsUpdate", DepsUpdateExtension::class.java)
 
         fun registerOn(target: Project) {
+            if (target.tasks.findByName("checkDependencyUpdates") != null) return
             target.tasks.register("checkDependencyUpdates", CheckUpdatesTask::class.java) {
                 it.group = "dependency management"
                 it.description = "Check for newer versions via deps.dev (libs.versions.toml + build.gradle)"
