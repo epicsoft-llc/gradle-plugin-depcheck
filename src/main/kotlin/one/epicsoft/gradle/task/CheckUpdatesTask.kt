@@ -26,7 +26,7 @@ import java.util.Properties
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
-private data class DepResult(val label: String, val coord: String, val mavenCoord: String, val current: String, val latest: String?, val hasUpdate: Boolean)
+private data class DepResult(val label: String, val coord: String, val mavenCoord: String, val current: String, val latest: String?, val hasUpdate: Boolean, val verboseUrl: String? = null)
 
 private fun DepResult.format(verbose: Boolean): String {
     val prefix = "  [${label.padEnd(7)}]  "
@@ -34,7 +34,9 @@ private fun DepResult.format(verbose: Boolean): String {
         hasUpdate -> "$prefix${coord.padEnd(55)}  $current  →  $latest"
         else      -> "$prefix${coord.padEnd(55)}  $current"
     }
-    return if (verbose) "$base\n    https://deps.dev/maven/$mavenCoord" else base
+    if (!verbose) return base
+    val url = verboseUrl ?: "https://deps.dev/maven/$mavenCoord"
+    return "$base\n    $url"
 }
 
 @DisableCachingByDefault(because = "Queries deps.dev API — result depends on external state")
@@ -214,7 +216,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
             fetchVersion("current")
 
         latest ?: return null
-        return DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, latest, latest != current)
+        return DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, latest, latest != current, "https://gradle.org/releases/")
     }
 
     private fun collectBuildFiles(): List<File> {
