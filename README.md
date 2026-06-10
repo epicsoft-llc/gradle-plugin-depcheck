@@ -66,7 +66,7 @@ Für `exclude` und `maxVersion` gilt:
 - **Beide definieren** → `excludeMode` / `maxVersionMode` **muss** im Subprojekt gesetzt sein, sonst Build-Fehler
 
 ```groovy
-// build.gradle (Root)
+// build.gradle (Root) — AUSSERHALB von subprojects {}
 depsUpdate {
   failOnUpdates = true
   exclude = ["com.example:legacy-lib"]
@@ -80,6 +80,19 @@ depsUpdate {
   excludeMode = "MERGE"  // → beide Listen zusammengeführt
 }
 ```
+
+> **Achtung:** `depsUpdate {}` darf im Root **nicht** innerhalb von `subprojects {}` stehen. Ein `subprojects { depsUpdate { exclude = [...] } }` konfiguriert die Extension jedes Subprojekts direkt — wenn das Subprojekt danach sein eigenes `depsUpdate { exclude = [...] }` ausführt, überschreibt Gradle den Wert vollständig. Das Root-`depsUpdate {}` bleibt leer und die Vererbung greift nicht.
+>
+> **Richtig:**
+> ```groovy
+> // Root build.gradle
+> depsUpdate { exclude = ["com.example:shared-exclude"] }  // ← auf Root-Ebene
+>
+> subprojects {
+>   apply plugin: "one.epicsoft.deps-update"  // Plugin wird via Cascade bereits angewendet
+>   // kein depsUpdate {} hier
+> }
+> ```
 
 ### 3. Task ausführen
 
