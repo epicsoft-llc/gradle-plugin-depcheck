@@ -63,7 +63,7 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
     }
 
     private fun matchesVersionPrefix(version: String, prefix: String): Boolean {
-        val vParts = version.split(VERSION_SPLIT_REGEX)
+        val vParts = version.trimStart('v', 'V').split(VERSION_SPLIT_REGEX)
         val pParts = prefix.split(VERSION_SPLIT_REGEX)
         return pParts.indices.all { i ->
             vParts.getOrNull(i)?.toIntOrNull() == pParts[i].toIntOrNull()
@@ -84,8 +84,8 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
     }
 
     private fun compareVersions(a: String, b: String): Int {
-        val pa = a.split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
-        val pb = b.split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
+        val pa = a.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
+        val pb = b.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
         for (i in 0 until maxOf(pa.size, pb.size)) {
             val diff = pa.getOrElse(i) { 0 } - pb.getOrElse(i) { 0 }
             if (diff != 0) return diff
