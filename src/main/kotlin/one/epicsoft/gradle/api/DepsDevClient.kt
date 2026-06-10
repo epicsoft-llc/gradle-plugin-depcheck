@@ -23,7 +23,17 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
         private val PRERELEASE_RC_REGEX    = Regex("""[.\-]rc\d*""")
         private val PRERELEASE_CR_REGEX    = Regex("""[.\-]cr\d*""")
         private val PRERELEASE_BUILD_REGEX = Regex("""[.\-]b\d+""")  // e.g. 2.4.0-b180725.0427
-        private val VERSION_SPLIT_REGEX = Regex("[.\\-]")
+        private val VERSION_SPLIT_REGEX    = Regex("[.\\-]")
+
+        fun compareVersions(a: String, b: String): Int {
+            val pa = a.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
+            val pb = b.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
+            for (i in 0 until maxOf(pa.size, pb.size)) {
+                val diff = pa.getOrElse(i) { 0 } - pb.getOrElse(i) { 0 }
+                if (diff != 0) return diff
+            }
+            return 0
+        }
     }
 
     fun getLatestVersion(system: String, packageName: String, versionPrefix: String? = null): String? {
@@ -83,15 +93,5 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
                PRERELEASE_CR_REGEX.containsMatchIn(l) ||
                PRERELEASE_M_REGEX.containsMatchIn(l) ||
                PRERELEASE_BUILD_REGEX.containsMatchIn(l)
-    }
-
-    private fun compareVersions(a: String, b: String): Int {
-        val pa = a.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
-        val pb = b.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
-        for (i in 0 until maxOf(pa.size, pb.size)) {
-            val diff = pa.getOrElse(i) { 0 } - pb.getOrElse(i) { 0 }
-            if (diff != 0) return diff
-        }
-        return 0
     }
 }

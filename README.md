@@ -14,7 +14,7 @@ Plugin in `build.gradle` hinzufügen:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.2.4"
+  id "one.epicsoft.deps-update" version "0.2.5"
 }
 ```
 
@@ -162,9 +162,12 @@ Beide Syntaxen (Groovy + Kotlin DSL) werden erkannt.
 
 | Task | Verhalten |
 |---|---|
-| `./gradlew checkDependencyUpdates` | Scannt `libs.versions.toml` (alle Einträge) + `build.gradle` aller Subprojekte |
-| `./gradlew checkDependencyUpdates` (`checkSubprojects = false`) | Scannt nur Root-`build.gradle` + nur dort referenzierte Catalog-Einträge |
+| `./gradlew checkDependencyUpdates` | Führt den Task in **allen** Projekten aus (root + alle Subprojekte) |
+| `./gradlew :checkDependencyUpdates` | Führt **nur** den Root-Task aus — scannt `libs.versions.toml` (alle Einträge) + `build.gradle` aller Subprojekte |
+| `./gradlew :checkDependencyUpdates` (`checkSubprojects = false`) | Führt nur den Root-Task aus und scannt dabei nur Root-`build.gradle` + nur dort referenzierte Catalog-Einträge |
 | `./gradlew :core:checkDependencyUpdates` | Scannt nur `core/build.gradle` — aus dem Version Catalog werden **nur die tatsächlich referenzierten** `libs.*`-Aliases geprüft |
+
+> **Hinweis:** `./gradlew checkDependencyUpdates` (ohne `:`) ist Standard-Gradle-Verhalten — Gradle führt den Task in jedem Projekt aus, das ihn registriert hat. Für Root-only immer `./gradlew :checkDependencyUpdates` verwenden.
 
 Catalog-Alias-Syntax (`implementation libs.someLib`) wird in Subprojekten automatisch aufgelöst und geprüft.
 
@@ -217,7 +220,7 @@ src/main/kotlin/one/epicsoft/gradle/
 ### Neue Version veröffentlichen
 
 1. `version` in `gradle.properties` erhöhen
-2. Git-Tag setzen: `git tag v0.2.4 && git push --tags`
+2. Git-Tag setzen: `git tag v0.2.5 && git push --tags`
 3. CI-Pipeline publiziert automatisch in die GitLab Package Registry
 4. In Consumer-Projekten die Version aktualisieren
 

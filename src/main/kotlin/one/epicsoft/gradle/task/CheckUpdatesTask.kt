@@ -108,7 +108,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     if (coord in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
                         val latest = client.getLatestVersion("MAVEN", coord, maxVersionMap[coord]) ?: return@submit null
-                        DepResult("library", coord, coord, lib.version, latest, latest != lib.version)
+                        DepResult("library", coord, coord, lib.version, latest, client.compareVersions(latest, lib.version) > 0)
                     }
                 }
 
@@ -117,7 +117,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     jobs += executor.submit<DepResult?> {
                         val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
                         val latest = client.getLatestVersion("MAVEN", mavenCoord, maxVersionMap[plugin.id]) ?: return@submit null
-                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, latest != plugin.version)
+                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, client.compareVersions(latest, plugin.version) > 0)
                     }
                 }
             }
@@ -131,7 +131,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     if (coord in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
                         val latest = client.getLatestVersion("MAVEN", coord, maxVersionMap[coord]) ?: return@submit null
-                        DepResult("dep", coord, coord, dep.version, latest, latest != dep.version)
+                        DepResult("dep", coord, coord, dep.version, latest, client.compareVersions(latest, dep.version) > 0)
                     }
                 }
 
@@ -140,7 +140,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     jobs += executor.submit<DepResult?> {
                         val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
                         val latest = client.getLatestVersion("MAVEN", mavenCoord, maxVersionMap[plugin.id]) ?: return@submit null
-                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, latest != plugin.version)
+                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, client.compareVersions(latest, plugin.version) > 0)
                     }
                 }
             }
@@ -219,7 +219,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
             fetchVersion("current")
 
         latest ?: return null
-        return DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, latest, latest != current, "https://gradle.org/releases/")
+        return DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, latest, DepsDevClient.compareVersions(latest, current) > 0, "https://gradle.org/releases/")
     }
 
     private fun collectBuildFiles(): List<File> {
