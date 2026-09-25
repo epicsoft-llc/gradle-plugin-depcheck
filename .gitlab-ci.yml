@@ -10,7 +10,10 @@ before_script:
   - chmod +x ./gradlew
 
 cache:
-  key: "$CI_COMMIT_REF_SLUG"
+  #### Keyed on the dependency files, not the branch: branches and tags share it, a new one only when versions change.
+  key:
+    files: [ "build.gradle", "gradle/wrapper/gradle-wrapper.properties" ]
+    prefix: depcheck-gradle
   paths:
     - .gradle/caches/
     - .gradle/wrapper/
