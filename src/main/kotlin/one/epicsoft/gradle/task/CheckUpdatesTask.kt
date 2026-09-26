@@ -1,6 +1,7 @@
 package one.epicsoft.gradle.task
 
 import one.epicsoft.gradle.api.DepsDevClient
+import one.epicsoft.gradle.api.VersionPattern
 import one.epicsoft.gradle.parser.BuildGradleParser
 import one.epicsoft.gradle.parser.CatalogAliasUsages
 import one.epicsoft.gradle.parser.LibraryEntry
@@ -71,7 +72,13 @@ abstract class CheckUpdatesTask : DefaultTask() {
         val rootDir = project.rootDir
         val client = DepsDevClient(includePreRelease.get())
         val excludeSet = exclude.get().toSet()
-        val maxVersionMap = maxVersion.get()
+        val patterns = maxVersion.get().mapValues { (coord, value) ->
+            try {
+                VersionPattern.parse(value)
+            } catch (e: IllegalArgumentException) {
+                throw GradleException("maxVersion for '$coord': ${e.message}")
+            }
+        }
         val gradleProperties = loadGradleProperties(rootDir)
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
@@ -107,8 +114,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     val coord = "${lib.group}:${lib.name}"
                     if (coord in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
-                        val latest = client.getLatestVersion("MAVEN", coord, maxVersionMap[coord]) ?: return@submit null
-                        DepResult("library", coord, coord, lib.version, latest, DepsDevClient.compareVersions(latest, lib.version) > 0)
+                        val pattern = patterns[coord]
+                        val latest = client.getLatestVersion("MAVEN", coord, pattern) ?: return@submit null
+                        DepResult("library", coord, coord, lib.version, latest, hasUpdate(pattern, latest, lib.version))
                     }
                 }
 
@@ -116,8 +124,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     if (plugin.id in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
                         val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val latest = client.getLatestVersion("MAVEN", mavenCoord, maxVersionMap[plugin.id]) ?: return@submit null
-                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, DepsDevClient.compareVersions(latest, plugin.version) > 0)
+                        val pattern = patterns[plugin.id]
+                        val latest = client.getLatestVersion("MAVEN", mavenCoord, pattern) ?: return@submit null
+                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, hasUpdate(pattern, latest, plugin.version))
                     }
                 }
             }
@@ -130,8 +139,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     val coord = "${dep.group}:${dep.name}"
                     if (coord in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
-                        val latest = client.getLatestVersion("MAVEN", coord, maxVersionMap[coord]) ?: return@submit null
-                        DepResult("dep", coord, coord, dep.version, latest, DepsDevClient.compareVersions(latest, dep.version) > 0)
+                        val pattern = patterns[coord]
+                        val latest = client.getLatestVersion("MAVEN", coord, pattern) ?: return@submit null
+                        DepResult("dep", coord, coord, dep.version, latest, hasUpdate(pattern, latest, dep.version))
                     }
                 }
 
@@ -139,8 +149,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
                     if (plugin.id in excludeSet) return@forEach
                     jobs += executor.submit<DepResult?> {
                         val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val latest = client.getLatestVersion("MAVEN", mavenCoord, maxVersionMap[plugin.id]) ?: return@submit null
-                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, DepsDevClient.compareVersions(latest, plugin.version) > 0)
+                        val pattern = patterns[plugin.id]
+                        val latest = client.getLatestVersion("MAVEN", mavenCoord, pattern) ?: return@submit null
+                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, hasUpdate(pattern, latest, plugin.version))
                     }
                 }
             }
@@ -179,6 +190,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
             executor.shutdown()
         }
     }
+
+    private fun hasUpdate(pattern: VersionPattern?, latest: String, current: String): Boolean =
+        pattern?.isUpdate(latest, current) ?: (DepsDevClient.compareVersions(latest, current) > 0)
 
     private fun loadGradleProperties(rootDir: File): Properties {
         val props = Properties()

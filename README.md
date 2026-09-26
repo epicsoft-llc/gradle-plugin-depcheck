@@ -8,67 +8,81 @@ Supports both `gradle/libs.versions.toml` (Version Catalog) and `build.gradle` /
 
 ## Usage
 
-### 1. Plugin einbinden
+### 1. Apply the plugin
 
-Plugin in `build.gradle` hinzufügen:
+Add the plugin to `build.gradle`:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.2.5"
+  id "one.epicsoft.deps-update" version "0.3.0"
 }
 ```
 
-### 2. Konfiguration (optional)
+### 2. Configuration (optional)
 
 ```groovy
 depsUpdate {
-  verbose           = true   // default: false — deps.dev URL bei jedem Eintrag anzeigen
-  showAll           = true   // default: false — alle geprüften Dependencies anzeigen, nicht nur Updates
-  failOnUpdates     = true   // default: false — Build fehlschlagen lassen, wenn Updates verfügbar sind
-  includePreRelease = true   // default: false — RC, Alpha, Beta, Milestone als gültige Updates werten
+  verbose           = true   // default: false — show the deps.dev URL for every entry
+  showAll           = true   // default: false — show all checked dependencies, not only updates
+  failOnUpdates     = true   // default: false — fail the build when updates are available
+  includePreRelease = true   // default: false — count RC, Alpha, Beta, Milestone as valid updates
 
-  // Koordinaten von der Prüfung ausschließen (group:name für Libraries, Plugin-ID für Plugins)
+  // Exclude coordinates from the check (group:name for libraries, plugin ID for plugins)
   exclude = ["com.example:some-lib", "org.some.plugin"]
 
-  // Versions-Obergrenze pro Koordinate — nur Updates innerhalb des Präfix werden gemeldet
+  // Version pattern per coordinate: numbers cap the candidates, a trailing "x" sets the level at which an update counts
   maxVersion = [
-    "org.springframework.boot:spring-boot-starter": "3",   // nur 3.x.x
-    "org.springframework.boot"                    : "3.2"  // nur 3.2.x
+    "org.springframework.boot:spring-boot-starter": "3",    // 3.x.x only, every newer 3.x.y is reported
+    "org.springframework.boot"                    : "3.2",  // 3.2.x only
+    "software.amazon.awssdk:s3"                   : "2.x"   // 2.x.x, new minor lines only — no patches
   ]
 
-  checkGradleWrapper = true  // default: true — Gradle Wrapper Version prüfen
-  checkSubprojects   = false // default: true — nur Root-Build prüfen, Subprojekte ignorieren
+  checkGradleWrapper = true  // default: true — check the Gradle Wrapper version
+  checkSubprojects   = false // default: true — check the root build only, ignore subprojects
 
-  // Pflichtfelder, wenn Root-Projekt UND Subprojekt denselben Parameter setzen:
-  excludeMode    = "MERGE"    // "MERGE" = zusammenführen, "OVERRIDE" = nur Subprojekt
-  maxVersionMode = "OVERRIDE" // "MERGE" = zusammenführen (Subprojekt gewinnt bei Konflikten)
+  // Required when the root project AND a subproject set the same parameter:
+  excludeMode    = "MERGE"    // "MERGE" = combine, "OVERRIDE" = subproject only
+  maxVersionMode = "OVERRIDE" // "MERGE" = combine (subproject wins on conflicts)
 }
 ```
 
-| Option | Typ | Default | Beschreibung |
+| Option | Type | Default | Description |
 |---|---|---|---|
-| `verbose`           | `Boolean` | `false` | Alle Dependencies anzeigen (inkl. aktueller) + deps.dev-URL bei jedem Eintrag |
-| `showAll`           | `Boolean` | `false` | Alle geprüften Dependencies anzeigen, nicht nur Updates (von `verbose` impliziert) |
-| `failOnUpdates`     | `Boolean` | `false` | Build schlägt fehl, wenn mindestens ein Update verfügbar ist |
-| `includePreRelease` | `Boolean` | `false` | RC-, Alpha-, Beta- und Milestone-Versionen als neuere Version werten |
-| `exclude`           | `List<String>` | `[]` | Koordinaten, die komplett übersprungen werden (`group:name` oder Plugin-ID) |
-| `maxVersion`        | `Map<String, String>` | `{}` | Versions-Präfix als Obergrenze pro Koordinate (z.B. `"3"` = nur 3.x.x, `"3.2"` = nur 3.2.x) |
-| `checkGradleWrapper` | `Boolean` | `true` | Gradle Wrapper Version über `services.gradle.org` prüfen |
-| `checkSubprojects`  | `Boolean` | `true` | `false` = Root-Task prüft nur das Root-`build.gradle` + nur dort referenzierte Catalog-Einträge |
-| `excludeMode`       | `String` | — | **Pflicht bei Kollision**: `"MERGE"` = root + sub zusammenführen; `"OVERRIDE"` = nur Subprojekt-Liste |
-| `maxVersionMode`    | `String` | — | **Pflicht bei Kollision**: `"MERGE"` = zusammenführen, Subprojekt gewinnt bei gleichem Key; `"OVERRIDE"` = nur Subprojekt-Map |
+| `verbose`           | `Boolean` | `false` | Show all dependencies (incl. current ones) + the deps.dev URL for every entry |
+| `showAll`           | `Boolean` | `false` | Show all checked dependencies, not only updates (implied by `verbose`) |
+| `failOnUpdates`     | `Boolean` | `false` | The build fails when at least one update is available |
+| `includePreRelease` | `Boolean` | `false` | Count RC, Alpha, Beta and Milestone versions as newer versions |
+| `exclude`           | `List<String>` | `[]` | Coordinates skipped entirely (`group:name` or plugin ID) |
+| `maxVersion`        | `Map<String, String>` | `{}` | Version pattern per coordinate: numbers = cap, trailing `x` = level at which an update counts (table below) |
+| `checkGradleWrapper` | `Boolean` | `true` | Check the Gradle Wrapper version via `services.gradle.org` |
+| `checkSubprojects`  | `Boolean` | `true` | `false` = the root task checks only the root `build.gradle` + the catalog entries referenced there |
+| `excludeMode`       | `String` | — | **Required on collision**: `"MERGE"` = combine root + sub; `"OVERRIDE"` = subproject list only |
+| `maxVersionMode`    | `String` | — | **Required on collision**: `"MERGE"` = combine, subproject wins on the same key; `"OVERRIDE"` = subproject map only |
 
-### Zentrale Konfiguration (Root → Subprojekte)
+### Version patterns in `maxVersion`
 
-Alle skalaren Optionen (`verbose`, `showAll`, `failOnUpdates`, `includePreRelease`, `checkGradleWrapper`) werden automatisch vom Root-Projekt an Subprojekte vererbt und können dort überschrieben werden.
+Leading numbers cap which versions are considered. A trailing `x` (also `X` or `*`) sets the level at which a newer version counts as an update — anything after it is ignored. `x` may only come last; `"2.x.5"` fails the task with an error message.
 
-Für `exclude` und `maxVersion` gilt:
-- Nur Root definiert → Subprojekt erbt automatisch
-- Nur Subprojekt definiert → Subprojekt-Wert wird verwendet
-- **Beide definieren** → `excludeMode` / `maxVersionMode` **muss** im Subprojekt gesetzt sein, sonst Build-Fehler
+| Value | Considered | Reported |
+|---|---|---|
+| `"3"` | 3.x.x | every newer 3.x.y |
+| `"2.55"` | 2.55.x | every newer 2.55.y |
+| `"2.x"` | 2.x.x | a new minor line only (2.56.0), no patches |
+| `"2.56.x"` | 2.56.x | every newer 2.56.y — same as `"2.56"` |
+| `"x"` | all | a new major version only |
+| `"x.x"` | all | new major and minor versions, no patches |
+
+### Central configuration (root → subprojects)
+
+All scalar options (`verbose`, `showAll`, `failOnUpdates`, `includePreRelease`, `checkGradleWrapper`) are inherited automatically from the root project by the subprojects and can be overridden there.
+
+For `exclude` and `maxVersion`:
+- Only the root defines it → the subproject inherits it automatically
+- Only the subproject defines it → the subproject value is used
+- **Both define it** → `excludeMode` / `maxVersionMode` **must** be set in the subproject, otherwise the build fails
 
 ```groovy
-// build.gradle (Root) — AUSSERHALB von subprojects {}
+// build.gradle (root) — OUTSIDE of subprojects {}
 depsUpdate {
   failOnUpdates = true
   exclude = ["com.example:legacy-lib"]
@@ -77,71 +91,71 @@ depsUpdate {
 
 // core/build.gradle
 depsUpdate {
-  // failOnUpdates, maxVersion werden geerbt
+  // failOnUpdates, maxVersion are inherited
   exclude     = ["com.example:core-internal"]
-  excludeMode = "MERGE"  // → beide Listen zusammengeführt
+  excludeMode = "MERGE"  // → both lists combined
 }
 ```
 
-> **Achtung:** `depsUpdate {}` darf im Root **nicht** innerhalb von `subprojects {}` stehen. Ein `subprojects { depsUpdate { exclude = [...] } }` konfiguriert die Extension jedes Subprojekts direkt — wenn das Subprojekt danach sein eigenes `depsUpdate { exclude = [...] }` ausführt, überschreibt Gradle den Wert vollständig. Das Root-`depsUpdate {}` bleibt leer und die Vererbung greift nicht.
+> **Caution:** `depsUpdate {}` in the root must **not** be placed inside `subprojects {}`. A `subprojects { depsUpdate { exclude = [...] } }` configures the extension of every subproject directly — when the subproject then runs its own `depsUpdate { exclude = [...] }`, Gradle overwrites the value completely. The root `depsUpdate {}` stays empty and inheritance does not apply.
 >
-> **Richtig:**
+> **Correct:**
 > ```groovy
 > // Root build.gradle
-> depsUpdate { exclude = ["com.example:shared-exclude"] }  // ← auf Root-Ebene
+> depsUpdate { exclude = ["com.example:shared-exclude"] }  // ← at root level
 >
 > subprojects {
->   apply plugin: "one.epicsoft.deps-update"  // Plugin wird via Cascade bereits angewendet
->   // kein depsUpdate {} hier
+>   apply plugin: "one.epicsoft.deps-update"  // the plugin is already applied via cascade
+>   // no depsUpdate {} here
 > }
 > ```
 
-### 3. Task ausführen
+### 3. Run the task
 
 ```bash
 ./gradlew checkDependencyUpdates
 ```
 
-### Beispielausgabe
+### Example output
 
-**Standard (`verbose = false`, `showAll = false`) — nur Updates:**
+**Default (`verbose = false`, `showAll = false`) — updates only:**
 ```
 Scanning: gradle/libs.versions.toml
 Scanning: build.gradle
 Scanning: core/build.gradle
 
 Available updates (2):
-  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
-  org.springframework.boot                              3.2.0  →  3.4.1
+  [library]  org.springframework.boot:spring-boot-starter             3.2.0  →  3.4.1
+  [plugin ]  org.springframework.boot                                 3.2.0  →  3.4.1
 ```
 
-**`verbose = true` — Updates + deps.dev URL:**
+**`verbose = true` — updates + deps.dev URL:**
 ```
 Available updates (2):
-  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
+  [library]  org.springframework.boot:spring-boot-starter             3.2.0  →  3.4.1
     https://deps.dev/maven/org.springframework.boot:spring-boot-starter
-  org.springframework.boot                              3.2.0  →  3.4.1
+  [plugin ]  org.springframework.boot                                 3.2.0  →  3.4.1
     https://deps.dev/maven/org.springframework.boot:org.springframework.boot.gradle.plugin
 ```
 
-**`showAll = true` — alle Dependencies:**
+**`showAll = true` — all dependencies:**
 ```
 Checked 3 dependencies:
-  com.fasterxml.jackson.core:jackson-databind           2.18.3
-  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
-  org.springframework.boot                              3.2.0  →  3.4.1
+  [library]  com.fasterxml.jackson.core:jackson-databind              2.18.3
+  [library]  org.springframework.boot:spring-boot-starter             3.2.0  →  3.4.1
+  [plugin ]  org.springframework.boot                                 3.2.0  →  3.4.1
 
 2 update(s) available.
 ```
 
-**`showAll = true` + `verbose = true` — alle Dependencies mit URL:**
+**`showAll = true` + `verbose = true` — all dependencies with URL:**
 ```
 Checked 3 dependencies:
-  com.fasterxml.jackson.core:jackson-databind           2.18.3
+  [library]  com.fasterxml.jackson.core:jackson-databind              2.18.3
     https://deps.dev/maven/com.fasterxml.jackson.core:jackson-databind
-  org.springframework.boot:spring-boot-starter          3.2.0  →  3.4.1
+  [library]  org.springframework.boot:spring-boot-starter             3.2.0  →  3.4.1
     https://deps.dev/maven/org.springframework.boot:spring-boot-starter
-  org.springframework.boot                              3.2.0  →  3.4.1
+  [plugin ]  org.springframework.boot                                 3.2.0  →  3.4.1
     https://deps.dev/maven/org.springframework.boot:org.springframework.boot.gradle.plugin
 
 2 update(s) available.
@@ -149,91 +163,93 @@ Checked 3 dependencies:
 
 ---
 
-## Was wird gescannt?
+## What is scanned?
 
-| Quelle | Inhalt |
+| Source | Content |
 |---|---|
-| `gradle/libs.versions.toml` | `[libraries]` und `[plugins]` (inkl. `version.ref`-Auflösung, alle Notationen) |
-| `build.gradle` / `build.gradle.kts` | `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation`, `classpath` + `plugins {}`-Block |
+| `gradle/libs.versions.toml` | `[libraries]` and `[plugins]` (incl. `version.ref` resolution, all notations) |
+| `build.gradle` / `build.gradle.kts` | `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation`, `testRuntimeOnly`, `testCompileOnly`, `testAnnotationProcessor`, `annotationProcessor`, `developmentOnly`, `classpath` + `plugins {}` block |
 
-Beide Syntaxen (Groovy + Kotlin DSL) werden erkannt.
+Both syntaxes (Groovy + Kotlin DSL) are recognized.
 
-### Verhalten bei Subprojekten
+### Behaviour with subprojects
 
-| Task | Verhalten |
+| Task | Behaviour |
 |---|---|
-| `./gradlew checkDependencyUpdates` | Führt den Task in **allen** Projekten aus (root + alle Subprojekte) |
-| `./gradlew :checkDependencyUpdates` | Führt **nur** den Root-Task aus — scannt `libs.versions.toml` (alle Einträge) + `build.gradle` aller Subprojekte |
-| `./gradlew :checkDependencyUpdates` (`checkSubprojects = false`) | Führt nur den Root-Task aus und scannt dabei nur Root-`build.gradle` + nur dort referenzierte Catalog-Einträge |
-| `./gradlew :core:checkDependencyUpdates` | Scannt nur `core/build.gradle` — aus dem Version Catalog werden **nur die tatsächlich referenzierten** `libs.*`-Aliases geprüft |
+| `./gradlew checkDependencyUpdates` | Runs the task in **all** projects (root + all subprojects) |
+| `./gradlew :checkDependencyUpdates` | Runs **only** the root task — scans `libs.versions.toml` (all entries) + the `build.gradle` of all subprojects |
+| `./gradlew :checkDependencyUpdates` (`checkSubprojects = false`) | Runs only the root task and scans only the root `build.gradle` + the catalog entries referenced there |
+| `./gradlew :core:checkDependencyUpdates` | Scans only `core/build.gradle` — from the version catalog **only the `libs.*` aliases actually referenced** are checked |
 
-> **Hinweis:** `./gradlew checkDependencyUpdates` (ohne `:`) ist Standard-Gradle-Verhalten — Gradle führt den Task in jedem Projekt aus, das ihn registriert hat. Für Root-only immer `./gradlew :checkDependencyUpdates` verwenden.
+> **Note:** `./gradlew checkDependencyUpdates` (without `:`) is standard Gradle behaviour — Gradle runs the task in every project that registered it. For root only, always use `./gradlew :checkDependencyUpdates`.
 
-Catalog-Alias-Syntax (`implementation libs.someLib`) wird in Subprojekten automatisch aufgelöst und geprüft.
+Catalog alias syntax (`implementation libs.someLib`) is resolved and checked automatically in subprojects.
 
 ---
 
-## Wie es funktioniert
+## How it works
 
-1. Der Task liest alle Dependency-Koordinaten aus den Build-Dateien.
-2. Für jede Koordinate wird parallel (Java Virtual Threads) die deps.dev REST API abgefragt:
+1. The task reads all dependency coordinates from the build files.
+2. For every coordinate the deps.dev REST API is queried in parallel (Java Virtual Threads):
    ```
    GET https://api.deps.dev/v3/systems/MAVEN/packages/{groupId%3AartifactId}
    ```
-3. Retracted und Pre-Release-Versionen (`-SNAPSHOT`, `-alpha`, `-beta`, `-RC`, `-M1` …) werden herausgefiltert.
-4. Gradle-Plugins werden über ihr Maven-Marker-Artifact aufgelöst: `{pluginId}:{pluginId}.gradle.plugin`
+3. Retracted and pre-release versions (`-SNAPSHOT`, `-alpha`, `-beta`, `-RC`, `-M1` …) are filtered out.
+4. Gradle plugins are resolved via their Maven marker artifact: `{pluginId}:{pluginId}.gradle.plugin`
 
 ---
 
-## Plugin entwickeln
+## Developing the plugin
 
-### Voraussetzungen
+### Requirements
 
-- Java 25+ (Gradle-Daemon)
-- Gradle Wrapper (liegt im Repo)
+- Java 25+ (Gradle daemon)
+- Gradle Wrapper (in the repo)
 
-> Das Plugin läuft im Gradle-Daemon (Java 25). Die eigene Anwendung kann weiterhin auf Java 17+ kompiliert werden.
+> The plugin runs in the Gradle daemon (Java 25). Your own application can still be compiled for Java 17+.
 
 ### Build
 
 ```bash
-./gradlew build
+./gradlew build    # compiles, validates the plugin and runs the tests (src/test)
 ```
 
-### Veröffentlichen
+### Publishing
 
-Läuft automatisch in der CI-Pipeline beim Setzen eines Git-Tags. Publish über GitLab Package Registry — `CI_JOB_TOKEN` wird automatisch gesetzt.
+Runs automatically in the CI pipeline when a Git tag is pushed. Publishes to the GitLab Package Registry — `CI_JOB_TOKEN` is set automatically.
 
-### Projektstruktur
+### Project structure
 
 ```
 src/main/kotlin/one/epicsoft/gradle/
-├── DepsUpdatePlugin.kt          # Registriert Extension + Task
-├── DepsUpdateExtension.kt       # Konfiguration (verbose)
-├── task/CheckUpdatesTask.kt     # Task-Implementierung
-├── api/DepsDevClient.kt         # deps.dev HTTP-Client
+├── DepsUpdatePlugin.kt          # Registers extension + task
+├── DepsUpdateExtension.kt       # Configuration (verbose, exclude, maxVersion, …)
+├── task/CheckUpdatesTask.kt     # Task implementation
+├── api/DepsDevClient.kt         # deps.dev HTTP client
+├── api/VersionPattern.kt        # maxVersion pattern (cap + update level)
 └── parser/
     ├── VersionCatalogParser.kt  # libs.versions.toml
     └── BuildGradleParser.kt     # build.gradle / build.gradle.kts
 ```
 
-### Neue Version veröffentlichen
+### Releasing a new version
 
-1. `version` in `gradle.properties` erhöhen
-2. Git-Tag setzen: `git tag v0.2.5 && git push --tags`
-3. CI-Pipeline publiziert automatisch in die GitLab Package Registry
-4. In Consumer-Projekten die Version aktualisieren
+1. Bump `version` in `gradle.properties`
+2. Set a Git tag: `git tag v0.3.0 && git push --tags`
+3. The CI pipeline publishes to the GitLab Package Registry automatically
+4. Update the version in the consuming projects
 
 ---
 
-## Technischer Stack
+## Tech stack
 
 | | |
 |---|---|
-| Sprache | Kotlin 2.3.20 |
+| Language | Kotlin 2.3.20 |
 | Gradle | 9.5.1 |
-| HTTP | `java.net.http.HttpClient` (kein externes Framework) |
-| JSON | Gson 2.11.0 |
-| Parallelität | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
+| HTTP | `java.net.http.HttpClient` (no external framework) |
+| JSON | Gson 2.14.0 |
+| Tests | JUnit 6 + `kotlin-test` |
+| Concurrency | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
 
-> **Hinweis:** Die Kotlin-Plugin-Version muss zur gebündelten Kotlin-Version des verwendeten Gradle-Wrappers passen. Gradle 9.5.1 bündelt Kotlin 2.3.20.
+> **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.5.1 bundles Kotlin 2.3.20.

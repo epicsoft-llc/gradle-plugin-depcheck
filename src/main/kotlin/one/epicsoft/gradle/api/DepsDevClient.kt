@@ -23,20 +23,23 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
         private val PRERELEASE_RC_REGEX    = Regex("""[.\-]rc\d*""")
         private val PRERELEASE_CR_REGEX    = Regex("""[.\-]cr\d*""")
         private val PRERELEASE_BUILD_REGEX = Regex("""[.\-]b\d+""")  // e.g. 2.4.0-b180725.0427
-        private val VERSION_SPLIT_REGEX    = Regex("[.\\-]")
+        internal val VERSION_SPLIT_REGEX   = Regex("[.\\-]")
 
-        fun compareVersions(a: String, b: String): Int {
-            val pa = a.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
-            val pb = b.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
+        fun numericParts(v: String): List<Int> =
+            v.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
+
+        fun compareParts(pa: List<Int>, pb: List<Int>): Int {
             for (i in 0 until maxOf(pa.size, pb.size)) {
                 val diff = pa.getOrElse(i) { 0 } - pb.getOrElse(i) { 0 }
                 if (diff != 0) return diff
             }
             return 0
         }
+
+        fun compareVersions(a: String, b: String): Int = compareParts(numericParts(a), numericParts(b))
     }
 
-    fun getLatestVersion(system: String, packageName: String, versionPrefix: String? = null): String? {
+    fun getLatestVersion(system: String, packageName: String, pattern: VersionPattern? = null): String? {
         val encoded = URLEncoder.encode(packageName, StandardCharsets.UTF_8)
         val request = HttpRequest.newBuilder(
             URI.create("https://api.deps.dev/v3/systems/$system/packages/$encoded")
@@ -48,13 +51,13 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
         return try {
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
             if (response.statusCode() != 200) return null
-            parseLatest(response.body(), versionPrefix)
+            parseLatest(response.body(), pattern)
         } catch (_: Exception) {
             null
         }
     }
 
-    private fun parseLatest(json: String, versionPrefix: String? = null): String? {
+    private fun parseLatest(json: String, pattern: VersionPattern? = null): String? {
         val type = object : TypeToken<Map<String, Any>>() {}.type
         val map: Map<String, Any> = gson.fromJson(json, type)
 
@@ -69,16 +72,8 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
             }
             .filter { includePreRelease || !isPreRelease(it) }
             .filter { !isLegacyTimestamp(it) }
-            .filter { v -> versionPrefix == null || matchesVersionPrefix(v, versionPrefix) }
+            .filter { v -> pattern == null || pattern.matches(v) }
             .maxWithOrNull { a, b -> compareVersions(a, b) }
-    }
-
-    private fun matchesVersionPrefix(version: String, prefix: String): Boolean {
-        val vParts = version.trimStart('v', 'V').split(VERSION_SPLIT_REGEX)
-        val pParts = prefix.split(VERSION_SPLIT_REGEX)
-        return pParts.indices.all { i ->
-            vParts.getOrNull(i)?.toIntOrNull() == pParts[i].toIntOrNull()
-        }
     }
 
     private fun isLegacyTimestamp(v: String): Boolean =
