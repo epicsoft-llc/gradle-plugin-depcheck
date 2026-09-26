@@ -22,11 +22,7 @@ class DepsDevClient(
     private val gson: Gson = Gson()
 
     companion object {
-        private val PRERELEASE_M_REGEX     = Regex("""-m\d+$""")
-        private val PRERELEASE_RC_REGEX    = Regex("""[.\-]rc\d*""")
-        private val PRERELEASE_CR_REGEX    = Regex("""[.\-]cr\d*""")
-        private val PRERELEASE_BUILD_REGEX = Regex("""[.\-]b\d+""")  // e.g. 2.4.0-b180725.0427
-        internal val VERSION_SPLIT_REGEX   = Regex("[.\\-]")
+        internal val VERSION_SPLIT_REGEX = Regex("[.\\-]")
 
         fun numericParts(v: String): List<Int> =
             v.trimStart('v', 'V').split(VERSION_SPLIT_REGEX).mapNotNull { it.toIntOrNull() }
@@ -70,29 +66,12 @@ class DepsDevClient(
         @Suppress("UNCHECKED_CAST")
         val versions = map["versions"] as? List<Map<String, Any>> ?: return null
 
-        return versions
+        val candidates = versions.asSequence()
             .filter { it["isRetracted"] != true }
             .mapNotNull { v ->
                 @Suppress("UNCHECKED_CAST")
                 (v["versionKey"] as? Map<String, Any>)?.get("version") as? String
             }
-            .filter { includePreRelease || !isPreRelease(it) }
-            .filter { !isLegacyTimestamp(it) }
-            .filter { v -> pattern == null || pattern.matches(v) }
-            .maxWithOrNull { a, b -> compareVersions(a, b) }
-    }
-
-    private fun isLegacyTimestamp(v: String): Boolean =
-        VERSION_SPLIT_REGEX.split(v).any { (it.toIntOrNull() ?: 0) > 99999 }
-
-    private fun isPreRelease(v: String): Boolean {
-        val l = v.lowercase()
-        return l.contains("snapshot") ||
-               l.contains("alpha") ||
-               l.contains("beta") ||
-               PRERELEASE_RC_REGEX.containsMatchIn(l) ||
-               PRERELEASE_CR_REGEX.containsMatchIn(l) ||
-               PRERELEASE_M_REGEX.containsMatchIn(l) ||
-               PRERELEASE_BUILD_REGEX.containsMatchIn(l)
+        return Versions.latest(candidates, includePreRelease, pattern)
     }
 }

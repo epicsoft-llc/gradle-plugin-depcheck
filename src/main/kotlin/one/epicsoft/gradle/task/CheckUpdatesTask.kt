@@ -2,7 +2,9 @@ package one.epicsoft.gradle.task
 
 import one.epicsoft.gradle.api.DepsDevClient
 import one.epicsoft.gradle.api.Lookup
+import one.epicsoft.gradle.api.MavenRepositoryClient
 import one.epicsoft.gradle.api.VersionPattern
+import one.epicsoft.gradle.api.VersionSources
 import one.epicsoft.gradle.parser.BuildGradleParser
 import one.epicsoft.gradle.parser.CatalogAliasUsages
 import one.epicsoft.gradle.parser.LibraryEntry
@@ -70,6 +72,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @get:Input
     abstract val checkSubprojects: Property<Boolean>
 
+    @get:Input
+    abstract val mavenRepositories: ListProperty<String>
+
     /** Set at configuration time — `Task.project` must not be touched during execution (an error from Gradle 10 on). */
     @get:Internal
     abstract val rootDirectory: Property<File>
@@ -84,7 +89,19 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @TaskAction
     fun checkUpdates() {
         val rootDir = rootDirectory.get()
-        val client = DepsDevClient(includePreRelease.get())
+        val repositories = mavenRepositories.get().map { it.trim() }.filter { it.isNotEmpty() }
+        repositories.forEach { repository ->
+            try {
+                MavenRepositoryClient.requireSupported(repository)
+            } catch (e: IllegalArgumentException) {
+                throw GradleException("depsUpdate.mavenRepositories: ${e.message}")
+            }
+        }
+        val sources = VersionSources(
+            DepsDevClient(includePreRelease.get()),
+            repositories.takeIf { it.isNotEmpty() }?.let { MavenRepositoryClient(it, includePreRelease.get()) },
+        )
+        val unknownTo = if (repositories.isEmpty()) "deps.dev" else "deps.dev and the configured repositories"
         val excludeSet = exclude.get().toSet()
         val maxVersions = maxVersion.get()
         val patterns = maxVersions.mapValues { (coord, value) ->
@@ -107,10 +124,10 @@ abstract class CheckUpdatesTask : DefaultTask() {
         fun check(label: String, coord: String, mavenCoord: String, current: String) {
             jobs += executor.submit<DepResult?> {
                 val pattern = patterns[coord]
-                when (val lookup = client.getLatestVersion("MAVEN", mavenCoord, pattern)) {
-                    is Lookup.Latest -> DepResult(label, coord, mavenCoord, current, lookup.version, hasUpdate(pattern, lookup.version, current))
+                when (val lookup = sources.latest(mavenCoord, pattern)) {
+                    is Lookup.Latest -> DepResult(label, coord, mavenCoord, current, lookup.version, hasUpdate(pattern, lookup.version, current), lookup.source)
                     is Lookup.Failed -> null.also { failed += "$coord (${lookup.reason})" }
-                    Lookup.Unknown   -> null.also { notChecked += "$coord (unknown to deps.dev)" }
+                    Lookup.Unknown   -> null.also { notChecked += "$coord (unknown to $unknownTo)" }
                     Lookup.NoMatch   -> null.also {
                         if (pattern != null) unmatched += "$coord (maxVersion \"${maxVersions[coord]}\")"
                         else notChecked += "$coord (no stable version)"
@@ -124,9 +141,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
                 File(rootDir, "gradle/libs.versions.toml"),
                 File(rootDir, "libs.versions.toml"),
             ).firstOrNull { it.exists() }
-            if (versionCatalog != null) {
+            val catalog = versionCatalog?.let { VersionCatalogParser.parse(it) }
+            if (versionCatalog != null && catalog != null) {
                 logger.lifecycle("Scanning: ${versionCatalog.relativeTo(rootDir)}")
-                val catalog = VersionCatalogParser.parse(versionCatalog)
 
                 val libraries: Iterable<LibraryEntry>
                 val plugins: Iterable<PluginEntry>
@@ -157,12 +174,17 @@ abstract class CheckUpdatesTask : DefaultTask() {
 
             buildFiles.forEach { file ->
                 logger.lifecycle("Scanning: ${file.relativeTo(rootDir)}")
-                val entries = BuildGradleParser.parse(file, gradleProperties)
+                val entries = BuildGradleParser.parse(file, gradleProperties, catalog?.versionByAccessor.orEmpty())
 
                 entries.dependencies.forEach { dep ->
                     val coord = "${dep.group}:${dep.name}"
                     if (coord in excludeSet) return@forEach
                     check("dep", coord, coord, dep.version)
+                }
+
+                entries.unresolved.forEach { dep ->
+                    val coord = "${dep.group}:${dep.name}"
+                    if (coord !in excludeSet) notChecked += "$coord (version ${dep.version} not resolvable)"
                 }
 
                 entries.plugins.forEach { plugin ->
@@ -210,6 +232,9 @@ abstract class CheckUpdatesTask : DefaultTask() {
             if (verbose && notChecked.isNotEmpty()) {
                 logger.lifecycle("\nNot checked (${notChecked.size}):")
                 notChecked.sorted().forEach { logger.lifecycle("  $it") }
+            } else if (notChecked.isNotEmpty()) {
+                // Counted without verbose too: a private artifact must not drop out of the check unnoticed.
+                logger.lifecycle("\n${notChecked.size} not checked — verbose = true lists them and why.")
             }
 
             if (failOnUpdates.get() && updates.isNotEmpty())

@@ -54,6 +54,41 @@ class BuildGradleParserTest {
     }
 
     @Test
+    fun `an unresolvable version is reported, not dropped`() {
+        assertEquals(
+            listOf(DependencyEntry("com.example", "unresolved", "\${missing}")),
+            BuildGradleParser.parse(build, Properties().apply { setProperty("fromProperties", "1.2.3") }).unresolved,
+        )
+    }
+
+    @Test
+    fun `boms and platforms count, catalog versions resolve`() {
+        val boms = File(dir, "boms.gradle").apply {
+            writeText(
+                """
+                dependencyManagement {
+                  imports {
+                    mavenBom "org.springframework.cloud:spring-cloud-dependencies:${'$'}{libs.versions.spring.cloud.get()}"
+                  }
+                }
+                dependencies {
+                  implementation platform("com.example:groovy-bom:1.0.0")
+                  implementation(enforcedPlatform("com.example:kotlin-bom:2.0.0"))
+                }
+                """.trimIndent()
+            )
+        }
+        assertEquals(
+            listOf(
+                DependencyEntry("org.springframework.cloud", "spring-cloud-dependencies", "2025.0.0"),
+                DependencyEntry("com.example", "groovy-bom", "1.0.0"),
+                DependencyEntry("com.example", "kotlin-bom", "2.0.0"),
+            ),
+            BuildGradleParser.parse(boms, catalogVersions = mapOf("spring.cloud" to "2025.0.0")).dependencies,
+        )
+    }
+
+    @Test
     fun `only plugins with a version are checked`() {
         assertEquals(
             listOf(PluginEntry("org.springframework.boot", "3.4.1"), PluginEntry("com.github.ben-manes.versions", "0.52.0")),

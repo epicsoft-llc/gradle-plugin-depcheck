@@ -2,6 +2,21 @@
 
 Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
 
+## [0.4.0] - 2026-09-26
+
+### Added
+- `mavenRepositories`: coordinates deps.dev does not know — own libraries and Gradle plugins in a package registry —
+  are looked up in these repositories via `maven-metadata.xml`. Maven Central stays with deps.dev and is refused
+  there. Anonymous access only; a URL with credentials fails the task instead of reaching the log. Inherited by
+  subprojects
+- `mavenBom "g:a:v"` (Spring dependency management), `platform(…)` and `enforcedPlatform(…)` are scanned
+- Versions from the catalog in a build file, `${libs.versions.<alias>.get()}`, are resolved
+- Without `verbose`, a single line tells how many dependencies were not checked
+
+### Fixed
+- A dependency whose version expression cannot be resolved is reported as not checked instead of vanishing
+- Catalog aliases with `_` map to the same accessor as with `-` (`groovy_core` → `libs.groovy.core`)
+
 ## [0.3.0] - 2026-09-26
 
 ### Added

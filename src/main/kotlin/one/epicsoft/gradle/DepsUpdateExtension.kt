@@ -16,6 +16,12 @@ abstract class DepsUpdateExtension {
     abstract val checkGradleWrapper: Property<Boolean>
     abstract val checkSubprojects: Property<Boolean>
 
+    /**
+     * Maven repositories asked for what deps.dev does not know, e.g. a GitLab package registry. Read anonymously via
+     * `maven-metadata.xml`; credentials in the URL are rejected so they cannot end up in the build log.
+     */
+    abstract val mavenRepositories: ListProperty<String>
+
     /** Required when both root and this subproject define [exclude]. Values: "MERGE" or "OVERRIDE". */
     abstract val excludeMode: Property<String>
 
@@ -31,5 +37,6 @@ abstract class DepsUpdateExtension {
         maxVersion.convention(emptyMap())
         checkGradleWrapper.convention(true)
         checkSubprojects.convention(true)
+        mavenRepositories.convention(emptyList())
     }
 }

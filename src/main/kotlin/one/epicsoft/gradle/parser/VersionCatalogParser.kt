@@ -10,6 +10,8 @@ data class VersionCatalog(
     val plugins: List<PluginEntry>,
     val libraryByAccessor: Map<String, LibraryEntry>,
     val pluginByAccessor: Map<String, PluginEntry>,
+    /** `[versions]` by accessor, for `libs.versions.<accessor>` in a build file. */
+    val versionByAccessor: Map<String, String> = emptyMap(),
 )
 
 object VersionCatalogParser {
@@ -24,10 +26,12 @@ object VersionCatalogParser {
             plugins = pluginPairs.map { it.second },
             libraryByAccessor = libPairs.associate { (alias, entry) -> aliasToAccessor(alias) to entry },
             pluginByAccessor = pluginPairs.associate { (alias, entry) -> aliasToAccessor(alias) to entry },
+            versionByAccessor = versions.mapKeys { (alias, _) -> aliasToAccessor(alias) },
         )
     }
 
-    fun aliasToAccessor(alias: String): String = alias.replace('-', '.')
+    /** Gradle treats `-`, `_` and `.` in an alias alike: `groovy-core` and `groovy_core` both become `libs.groovy.core`. */
+    fun aliasToAccessor(alias: String): String = alias.replace('-', '.').replace('_', '.')
 
     private fun parseSections(content: String): Map<String, String> {
         val result = mutableMapOf<String, StringBuilder>()

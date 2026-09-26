@@ -61,4 +61,19 @@ class VersionCatalogParserTest {
         assertEquals("3.4.1", catalog.libraryByAccessor["spring.boot.starter"]?.version)
         assertEquals("org.jetbrains.kotlin.jvm", catalog.pluginByAccessor["kotlin.jvm"]?.id)
     }
+
+    @Test
+    fun `versions map to accessors too, and underscores separate like dashes`() {
+        val underscored = parse(
+            """
+            [versions]
+            spring-cloud = "2025.0.0"
+
+            [libraries]
+            groovy_core = { module = "org.apache.groovy:groovy", version = "5.0.0" }
+            """
+        )
+        assertEquals(mapOf("spring.cloud" to "2025.0.0"), underscored.versionByAccessor)
+        assertEquals(setOf("groovy.core"), underscored.libraryByAccessor.keys)
+    }
 }

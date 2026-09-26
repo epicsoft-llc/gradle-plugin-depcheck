@@ -27,6 +27,7 @@ class DepsUpdatePlugin : Plugin<Project> {
             extension.includePreRelease.convention(rootExt.includePreRelease)
             extension.checkGradleWrapper.convention(rootExt.checkGradleWrapper)
             extension.checkSubprojects.convention(rootExt.checkSubprojects)
+            extension.mavenRepositories.convention(rootExt.mavenRepositories)
         }
 
         fun registerTask(target: Project, ext: DepsUpdateExtension) {
@@ -52,7 +53,7 @@ class DepsUpdatePlugin : Plugin<Project> {
 
             target.tasks.register("checkDependencyUpdates", CheckUpdatesTask::class.java) {
                 it.group = "dependency management"
-                it.description = "Check for newer versions via deps.dev (libs.versions.toml + build.gradle)"
+                it.description = "Check for newer versions via deps.dev and optional Maven repositories (libs.versions.toml + build.gradle)"
                 it.verbose.set(ext.verbose)
                 it.showAll.set(ext.showAll)
                 it.failOnUpdates.set(ext.failOnUpdates)
@@ -61,6 +62,7 @@ class DepsUpdatePlugin : Plugin<Project> {
                 it.maxVersion.set(effectiveMaxVersion)
                 it.checkGradleWrapper.set(ext.checkGradleWrapper)
                 it.checkSubprojects.set(ext.checkSubprojects)
+                it.mavenRepositories.set(ext.mavenRepositories)
                 it.rootDirectory.set(target.rootDir)
                 it.runsInRootProject.set(isRoot)
                 it.buildFiles.set(ext.checkSubprojects.map { all -> if (isRoot && all) allBuildFiles else ownBuildFiles })
