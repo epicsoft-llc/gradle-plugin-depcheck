@@ -4,19 +4,9 @@ stages:
 
 variables:
   GRADLE_OPTS: "-Dorg.gradle.daemon=false"
-  GRADLE_USER_HOME: "$CI_PROJECT_DIR/.gradle"
 
 before_script:
   - chmod +x ./gradlew
-
-cache:
-  #### Keyed on the dependency files, not the branch: branches and tags share it, a new one only when versions change.
-  key:
-    files: [ "build.gradle", "gradle/wrapper/gradle-wrapper.properties" ]
-    prefix: depcheck-gradle
-  paths:
-    - .gradle/caches/
-    - .gradle/wrapper/
 
 build:
   stage: build
@@ -24,8 +14,12 @@ build:
   script:
     - ./gradlew build
   artifacts:
+    #### always: the test report is most useful when the build failed
+    when: always
     paths:
       - build/libs/*.jar
+    reports:
+      junit: build/test-results/test/*.xml
     expire_in: 1 week
 
 publish:

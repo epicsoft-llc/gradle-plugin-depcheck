@@ -1,6 +1,7 @@
 package one.epicsoft.gradle.task
 
 import one.epicsoft.gradle.api.DepsDevClient
+import one.epicsoft.gradle.api.Lookup
 import one.epicsoft.gradle.api.VersionPattern
 import one.epicsoft.gradle.parser.BuildGradleParser
 import one.epicsoft.gradle.parser.CatalogAliasUsages
@@ -13,6 +14,7 @@ import org.gradle.api.provider.ListProperty
 import org.gradle.api.provider.MapProperty
 import org.gradle.api.provider.Property
 import org.gradle.api.tasks.Input
+import org.gradle.api.tasks.Internal
 import org.gradle.api.tasks.TaskAction
 import org.gradle.work.DisableCachingByDefault
 import com.google.gson.Gson
@@ -24,6 +26,7 @@ import java.net.http.HttpRequest
 import java.net.http.HttpResponse
 import java.time.Duration
 import java.util.Properties
+import java.util.concurrent.ConcurrentLinkedQueue
 import java.util.concurrent.Executors
 import java.util.concurrent.Future
 
@@ -67,12 +70,24 @@ abstract class CheckUpdatesTask : DefaultTask() {
     @get:Input
     abstract val checkSubprojects: Property<Boolean>
 
+    /** Set at configuration time — `Task.project` must not be touched during execution (an error from Gradle 10 on). */
+    @get:Internal
+    abstract val rootDirectory: Property<File>
+
+    @get:Input
+    abstract val runsInRootProject: Property<Boolean>
+
+    /** Build files to scan: this project's own; for the root task with `checkSubprojects` those of every project. */
+    @get:Internal
+    abstract val buildFiles: ListProperty<File>
+
     @TaskAction
     fun checkUpdates() {
-        val rootDir = project.rootDir
+        val rootDir = rootDirectory.get()
         val client = DepsDevClient(includePreRelease.get())
         val excludeSet = exclude.get().toSet()
-        val patterns = maxVersion.get().mapValues { (coord, value) ->
+        val maxVersions = maxVersion.get()
+        val patterns = maxVersions.mapValues { (coord, value) ->
             try {
                 VersionPattern.parse(value)
             } catch (e: IllegalArgumentException) {
@@ -82,9 +97,27 @@ abstract class CheckUpdatesTask : DefaultTask() {
         val gradleProperties = loadGradleProperties(rootDir)
         val executor = Executors.newVirtualThreadPerTaskExecutor()
         val jobs = mutableListOf<Future<DepResult?>>()
+        val failed = ConcurrentLinkedQueue<String>()
+        val unmatched = ConcurrentLinkedQueue<String>()
+        val notChecked = ConcurrentLinkedQueue<String>()
 
-        val isRoot = project == project.rootProject
-        val buildFiles = collectBuildFiles()
+        val isRoot = runsInRootProject.get()
+        val buildFiles = buildFiles.get().filter { it.exists() }
+
+        fun check(label: String, coord: String, mavenCoord: String, current: String) {
+            jobs += executor.submit<DepResult?> {
+                val pattern = patterns[coord]
+                when (val lookup = client.getLatestVersion("MAVEN", mavenCoord, pattern)) {
+                    is Lookup.Latest -> DepResult(label, coord, mavenCoord, current, lookup.version, hasUpdate(pattern, lookup.version, current))
+                    is Lookup.Failed -> null.also { failed += "$coord (${lookup.reason})" }
+                    Lookup.Unknown   -> null.also { notChecked += "$coord (unknown to deps.dev)" }
+                    Lookup.NoMatch   -> null.also {
+                        if (pattern != null) unmatched += "$coord (maxVersion \"${maxVersions[coord]}\")"
+                        else notChecked += "$coord (no stable version)"
+                    }
+                }
+            }
+        }
 
         try {
             val versionCatalog = listOf(
@@ -113,21 +146,12 @@ abstract class CheckUpdatesTask : DefaultTask() {
                 libraries.forEach { lib ->
                     val coord = "${lib.group}:${lib.name}"
                     if (coord in excludeSet) return@forEach
-                    jobs += executor.submit<DepResult?> {
-                        val pattern = patterns[coord]
-                        val latest = client.getLatestVersion("MAVEN", coord, pattern) ?: return@submit null
-                        DepResult("library", coord, coord, lib.version, latest, hasUpdate(pattern, latest, lib.version))
-                    }
+                    check("library", coord, coord, lib.version)
                 }
 
                 plugins.forEach { plugin ->
                     if (plugin.id in excludeSet) return@forEach
-                    jobs += executor.submit<DepResult?> {
-                        val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val pattern = patterns[plugin.id]
-                        val latest = client.getLatestVersion("MAVEN", mavenCoord, pattern) ?: return@submit null
-                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, hasUpdate(pattern, latest, plugin.version))
-                    }
+                    check("plugin", plugin.id, "${plugin.id}:${plugin.id}.gradle.plugin", plugin.version)
                 }
             }
 
@@ -138,50 +162,54 @@ abstract class CheckUpdatesTask : DefaultTask() {
                 entries.dependencies.forEach { dep ->
                     val coord = "${dep.group}:${dep.name}"
                     if (coord in excludeSet) return@forEach
-                    jobs += executor.submit<DepResult?> {
-                        val pattern = patterns[coord]
-                        val latest = client.getLatestVersion("MAVEN", coord, pattern) ?: return@submit null
-                        DepResult("dep", coord, coord, dep.version, latest, hasUpdate(pattern, latest, dep.version))
-                    }
+                    check("dep", coord, coord, dep.version)
                 }
 
                 entries.plugins.forEach { plugin ->
                     if (plugin.id in excludeSet) return@forEach
-                    jobs += executor.submit<DepResult?> {
-                        val mavenCoord = "${plugin.id}:${plugin.id}.gradle.plugin"
-                        val pattern = patterns[plugin.id]
-                        val latest = client.getLatestVersion("MAVEN", mavenCoord, pattern) ?: return@submit null
-                        DepResult("plugin", plugin.id, mavenCoord, plugin.version, latest, hasUpdate(pattern, latest, plugin.version))
-                    }
+                    check("plugin", plugin.id, "${plugin.id}:${plugin.id}.gradle.plugin", plugin.version)
                 }
             }
 
             if (checkGradleWrapper.get()) {
-                val wrapperResult = executor.submit<DepResult?> {
-                    checkGradleWrapperVersion(rootDir, includePreRelease.get())
+                jobs += executor.submit<DepResult?> {
+                    checkGradleWrapperVersion(rootDir, includePreRelease.get(), failed)
                 }
-                jobs += wrapperResult
             }
 
             val verbose = verbose.get()
             val showAll = showAll.get() || verbose
             val results = jobs.mapNotNull { it.get() }.sortedBy { it.coord }
             val updates = results.filter { it.hasUpdate }
+            val upToDate = if (failed.isEmpty()) "All dependencies are up-to-date." else "All checked dependencies are up-to-date."
 
             if (showAll) {
                 logger.lifecycle("\nChecked ${results.size} dependenc${if (results.size == 1) "y" else "ies"}:")
                 results.forEach { logger.lifecycle(it.format(verbose)) }
                 if (updates.isEmpty())
-                    logger.lifecycle("\nAll dependencies are up-to-date.")
+                    logger.lifecycle("\n$upToDate")
                 else
                     logger.lifecycle("\n${updates.size} update(s) available.")
             } else {
                 if (updates.isEmpty())
-                    logger.lifecycle("\nAll dependencies are up-to-date.")
+                    logger.lifecycle("\n$upToDate")
                 else {
                     logger.lifecycle("\nAvailable updates (${updates.size}):")
                     updates.forEach { logger.lifecycle(it.format(verbose)) }
                 }
+            }
+
+            if (unmatched.isNotEmpty()) {
+                logger.warn("\nNo version matches the maxVersion pattern — check the configuration:")
+                unmatched.sorted().forEach { logger.warn("  $it") }
+            }
+            if (failed.isNotEmpty()) {
+                logger.warn("\nLookup failed for ${failed.size} dependenc${if (failed.size == 1) "y" else "ies"} — not checked, the result is incomplete:")
+                failed.sorted().forEach { logger.warn("  $it") }
+            }
+            if (verbose && notChecked.isNotEmpty()) {
+                logger.lifecycle("\nNot checked (${notChecked.size}):")
+                notChecked.sorted().forEach { logger.lifecycle("  $it") }
             }
 
             if (failOnUpdates.get() && updates.isNotEmpty())
@@ -201,7 +229,7 @@ abstract class CheckUpdatesTask : DefaultTask() {
         return props
     }
 
-    private fun checkGradleWrapperVersion(rootDir: File, includePreRelease: Boolean): DepResult? {
+    private fun checkGradleWrapperVersion(rootDir: File, includePreRelease: Boolean, failed: MutableCollection<String>): DepResult? {
         val wrapperProps = File(rootDir, "gradle/wrapper/gradle-wrapper.properties")
         if (!wrapperProps.exists()) return null
 
@@ -214,38 +242,28 @@ abstract class CheckUpdatesTask : DefaultTask() {
         val http = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build()
         val gson = Gson()
 
-        fun fetchVersion(endpoint: String): String? {
+        // "release-candidate" answers {} while no RC is out - that is NoMatch, not a failure.
+        fun fetchVersion(endpoint: String): Lookup {
             val req = HttpRequest.newBuilder(URI.create("https://services.gradle.org/versions/$endpoint"))
                 .GET().timeout(Duration.ofSeconds(15)).build()
             return try {
                 val resp = http.send(req, HttpResponse.BodyHandlers.ofString())
-                if (resp.statusCode() != 200) return null
+                if (resp.statusCode() != 200) return Lookup.Failed("HTTP ${resp.statusCode()}")
                 val type = object : TypeToken<Map<String, Any>>() {}.type
                 val map: Map<String, Any> = gson.fromJson(resp.body(), type)
-                if (map["broken"] == true || map["snapshot"] == true || map["nightly"] == true) return null
-                map["version"] as? String
-            } catch (_: Exception) { null }
+                val usable = map["broken"] != true && map["snapshot"] != true && map["nightly"] != true
+                (map["version"] as? String)?.takeIf { usable }?.let { Lookup.Latest(it) } ?: Lookup.NoMatch
+            } catch (e: Exception) {
+                Lookup.Failed(e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
+            }
         }
 
-        val latest = if (includePreRelease)
-            fetchVersion("release-candidate") ?: fetchVersion("current")
-        else
-            fetchVersion("current")
-
-        latest ?: return null
-        return DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, latest, DepsDevClient.compareVersions(latest, current) > 0, "https://gradle.org/releases/")
-    }
-
-    private fun collectBuildFiles(): List<File> {
-        val projects = when {
-            project != project.rootProject    -> listOf(project)
-            checkSubprojects.get()            -> project.rootProject.allprojects.toList()
-            else                              -> listOf(project.rootProject)
-        }
-        return projects.flatMap { p ->
-            listOf("build.gradle", "build.gradle.kts")
-                .map { File(p.projectDir, it) }
-                .filter { it.exists() }
+        val candidate = if (includePreRelease) fetchVersion("release-candidate") else Lookup.NoMatch
+        return when (val lookup = candidate as? Lookup.Latest ?: fetchVersion("current")) {
+            is Lookup.Latest -> DepResult("gradle", "Gradle Wrapper", "Gradle Wrapper", current, lookup.version,
+                DepsDevClient.compareVersions(lookup.version, current) > 0, "https://gradle.org/releases/")
+            is Lookup.Failed -> null.also { failed += "Gradle Wrapper (services.gradle.org: ${lookup.reason})" }
+            else -> null
         }
     }
 }

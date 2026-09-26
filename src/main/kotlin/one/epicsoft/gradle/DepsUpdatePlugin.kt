@@ -5,6 +5,7 @@ import org.gradle.api.GradleException
 import org.gradle.api.Plugin
 import org.gradle.api.Project
 import org.gradle.api.provider.Provider
+import java.io.File
 
 class DepsUpdatePlugin : Plugin<Project> {
     override fun apply(project: Project) {
@@ -44,6 +45,11 @@ class DepsUpdatePlugin : Plugin<Project> {
                 }
             else ext.maxVersion
 
+            // Everything the task needs from the project is captured here - it must not touch Task.project at execution.
+            val isRoot = target == target.rootProject
+            val ownBuildFiles = buildFilesOf(target)
+            val allBuildFiles = if (isRoot) target.allprojects.flatMap { buildFilesOf(it) } else ownBuildFiles
+
             target.tasks.register("checkDependencyUpdates", CheckUpdatesTask::class.java) {
                 it.group = "dependency management"
                 it.description = "Check for newer versions via deps.dev (libs.versions.toml + build.gradle)"
@@ -55,6 +61,9 @@ class DepsUpdatePlugin : Plugin<Project> {
                 it.maxVersion.set(effectiveMaxVersion)
                 it.checkGradleWrapper.set(ext.checkGradleWrapper)
                 it.checkSubprojects.set(ext.checkSubprojects)
+                it.rootDirectory.set(target.rootDir)
+                it.runsInRootProject.set(isRoot)
+                it.buildFiles.set(ext.checkSubprojects.map { all -> if (isRoot && all) allBuildFiles else ownBuildFiles })
             }
         }
 
@@ -68,6 +77,9 @@ class DepsUpdatePlugin : Plugin<Project> {
     }
 
     companion object {
+        private fun buildFilesOf(project: Project): List<File> =
+            listOf("build.gradle", "build.gradle.kts").map { File(project.projectDir, it) }
+
         private fun parseMode(projectPath: String, paramName: String, raw: String?): CollectionInheritMode? {
             if (raw.isNullOrBlank()) return null
             return CollectionInheritMode.entries.firstOrNull { it.name.equals(raw.trim(), ignoreCase = true) }

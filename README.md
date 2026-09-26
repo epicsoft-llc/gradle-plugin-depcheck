@@ -161,6 +161,18 @@ Checked 3 dependencies:
 2 update(s) available.
 ```
 
+### Lookup problems
+
+A dependency that could not be looked up is never dropped silently:
+
+| Situation | Output |
+|---|---|
+| deps.dev or services.gradle.org unreachable, HTTP error, unreadable response | **Warning** `Lookup failed for N dependencies — not checked, the result is incomplete`; if no update was found, the summary reads `All checked dependencies are up-to-date.` instead of `All dependencies …` |
+| A `maxVersion` pattern matches no version | **Warning** `No version matches the maxVersion pattern — check the configuration` |
+| deps.dev does not know the package (HTTP 404, e.g. a private artifact) or it has no stable version | Listed under `Not checked` with `verbose = true` |
+
+Failed lookups do not fail the build on their own; `failOnUpdates` only reacts to updates found.
+
 ---
 
 ## What is scanned?
@@ -214,6 +226,8 @@ Catalog alias syntax (`implementation libs.someLib`) is resolved and checked aut
 ./gradlew build    # compiles, validates the plugin and runs the tests (src/test)
 ```
 
+The tests need no network: the deps.dev client runs against a local HTTP server, and a TestKit build checks the task with the configuration cache and `--warning-mode=fail`.
+
 ### Publishing
 
 Runs automatically in the CI pipeline when a Git tag is pushed. Publishes to the GitLab Package Registry — `CI_JOB_TOKEN` is set automatically.
@@ -226,6 +240,7 @@ src/main/kotlin/one/epicsoft/gradle/
 ├── DepsUpdateExtension.kt       # Configuration (verbose, exclude, maxVersion, …)
 ├── task/CheckUpdatesTask.kt     # Task implementation
 ├── api/DepsDevClient.kt         # deps.dev HTTP client
+├── api/Lookup.kt                # lookup outcome: latest / no match / unknown / failed
 ├── api/VersionPattern.kt        # maxVersion pattern (cap + update level)
 └── parser/
     ├── VersionCatalogParser.kt  # libs.versions.toml
@@ -234,10 +249,11 @@ src/main/kotlin/one/epicsoft/gradle/
 
 ### Releasing a new version
 
-1. Bump `version` in `gradle.properties`
-2. Set a Git tag: `git tag v0.3.0 && git push --tags`
-3. The CI pipeline publishes to the GitLab Package Registry automatically
-4. Update the version in the consuming projects
+1. Bump `version` in `gradle.properties` and in this README
+2. Set the release date of the version in `CHANGELOG.md`
+3. Set a Git tag: `git tag 0.3.0 && git push --tags` — tags carry no `v` (the CI would strip one)
+4. The CI pipeline publishes to the GitLab Package Registry automatically
+5. Update the version in the consuming projects
 
 ---
 
@@ -245,11 +261,11 @@ src/main/kotlin/one/epicsoft/gradle/
 
 | | |
 |---|---|
-| Language | Kotlin 2.3.20 |
-| Gradle | 9.5.1 |
+| Language | Kotlin 2.4.10 |
+| Gradle | 9.8.0 |
 | HTTP | `java.net.http.HttpClient` (no external framework) |
 | JSON | Gson 2.14.0 |
 | Tests | JUnit 6 + `kotlin-test` |
 | Concurrency | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
 
-> **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.5.1 bundles Kotlin 2.3.20.
+> **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.8.0 bundles Kotlin 2.4.10.

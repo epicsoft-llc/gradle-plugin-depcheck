@@ -10,7 +10,10 @@ import java.net.http.HttpResponse
 import java.nio.charset.StandardCharsets
 import java.time.Duration
 
-class DepsDevClient(private val includePreRelease: Boolean = false) {
+class DepsDevClient(
+    private val includePreRelease: Boolean = false,
+    private val baseUrl: String = "https://api.deps.dev/v3",
+) {
 
     private val http: HttpClient = HttpClient.newBuilder()
         .connectTimeout(Duration.ofSeconds(10))
@@ -39,10 +42,10 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
         fun compareVersions(a: String, b: String): Int = compareParts(numericParts(a), numericParts(b))
     }
 
-    fun getLatestVersion(system: String, packageName: String, pattern: VersionPattern? = null): String? {
+    fun getLatestVersion(system: String, packageName: String, pattern: VersionPattern? = null): Lookup {
         val encoded = URLEncoder.encode(packageName, StandardCharsets.UTF_8)
         val request = HttpRequest.newBuilder(
-            URI.create("https://api.deps.dev/v3/systems/$system/packages/$encoded")
+            URI.create("$baseUrl/systems/$system/packages/$encoded")
         )
             .GET()
             .timeout(Duration.ofSeconds(15))
@@ -50,14 +53,17 @@ class DepsDevClient(private val includePreRelease: Boolean = false) {
 
         return try {
             val response = http.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() != 200) return null
-            parseLatest(response.body(), pattern)
-        } catch (_: Exception) {
-            null
+            when (response.statusCode()) {
+                200  -> parseLatest(response.body(), pattern)?.let { Lookup.Latest(it) } ?: Lookup.NoMatch
+                404  -> Lookup.Unknown
+                else -> Lookup.Failed("HTTP ${response.statusCode()}")
+            }
+        } catch (e: Exception) {
+            Lookup.Failed(e.javaClass.simpleName + (e.message?.let { ": $it" } ?: ""))
         }
     }
 
-    private fun parseLatest(json: String, pattern: VersionPattern? = null): String? {
+    internal fun parseLatest(json: String, pattern: VersionPattern? = null): String? {
         val type = object : TypeToken<Map<String, Any>>() {}.type
         val map: Map<String, Any> = gson.fromJson(json, type)
 
