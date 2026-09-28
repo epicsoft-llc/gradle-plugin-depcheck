@@ -1,24 +1,43 @@
-# epicsoft-gradle-plugin
+# DepCheck Gradle Plugin
 
 Gradle plugin that checks for newer versions of your dependencies and Gradle plugins by querying the [Google deps.dev](https://deps.dev) Open Source Insights API.
 
 Supports both `gradle/libs.versions.toml` (Version Catalog) and `build.gradle` / `build.gradle.kts`.
 
+- Plugin id: `one.epicsoft.deps-update`
+- License: MIT
+- Source: developed on [GitLab](https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck), mirrored to
+  [GitHub](https://github.com/epicsoft-llc/gradle-plugin-depcheck) — please open issues and merge requests on GitLab
+
 ---
 
 ## Usage
 
-### 1. Apply the plugin
+### 1. Declare the plugin repository
+
+The plugin is published to a GitLab package registry that is readable without credentials:
+
+```groovy
+// settings.gradle
+pluginManagement {
+  repositories {
+    gradlePluginPortal()
+    maven { url = "https://gitlab.com/api/v4/projects/82634030/packages/maven" }
+  }
+}
+```
+
+### 2. Apply the plugin
 
 Add the plugin to `build.gradle`:
 
 ```groovy
 plugins {
-  id "one.epicsoft.deps-update" version "0.4.0"
+  id "one.epicsoft.deps-update" version "0.4.1"
 }
 ```
 
-### 2. Configuration (optional)
+### 3. Configuration (optional)
 
 ```groovy
 depsUpdate {
@@ -63,7 +82,7 @@ depsUpdate {
 | `excludeMode`       | `String` | — | **Required on collision**: `"MERGE"` = combine root + sub; `"OVERRIDE"` = subproject list only |
 | `maxVersionMode`    | `String` | — | **Required on collision**: `"MERGE"` = combine, subproject wins on the same key; `"OVERRIDE"` = subproject map only |
 
-### Artifacts outside deps.dev
+#### Artifacts outside deps.dev
 
 deps.dev only knows public repositories such as Maven Central. Artifacts published elsewhere — your own libraries and
 Gradle plugins in a GitLab or other package registry — answer with HTTP 404 there. List those repositories in
@@ -88,7 +107,7 @@ depsUpdate {
   end up in the build log; a repository that needs a login is reported as a failed lookup.
 - The XML parser refuses a `DOCTYPE`, so a manipulated response cannot pull in external entities.
 
-### Version patterns in `maxVersion`
+#### Version patterns in `maxVersion`
 
 Leading numbers cap which versions are considered. A trailing `x` (also `X` or `*`) sets the level at which a newer version counts as an update — anything after it is ignored. `x` may only come last; `"2.x.5"` fails the task with an error message.
 
@@ -101,9 +120,9 @@ Leading numbers cap which versions are considered. A trailing `x` (also `X` or `
 | `"x"` | all | a new major version only |
 | `"x.x"` | all | new major and minor versions, no patches |
 
-### Central configuration (root → subprojects)
+#### Central configuration (root → subprojects)
 
-All scalar options (`verbose`, `showAll`, `failOnUpdates`, `includePreRelease`, `checkGradleWrapper`) are inherited automatically from the root project by the subprojects and can be overridden there.
+All scalar options (`verbose`, `showAll`, `failOnUpdates`, `includePreRelease`, `checkGradleWrapper`, `checkSubprojects`) and `mavenRepositories` are inherited automatically from the root project by the subprojects and can be overridden there.
 
 For `exclude` and `maxVersion`:
 - Only the root defines it → the subproject inherits it automatically
@@ -139,13 +158,13 @@ depsUpdate {
 > }
 > ```
 
-### 3. Run the task
+### 4. Run the task
 
 ```bash
 ./gradlew checkDependencyUpdates
 ```
 
-### Example output
+#### Example output
 
 **Default (`verbose = false`, `showAll = false`) — updates only:**
 ```
@@ -190,7 +209,7 @@ Checked 3 dependencies:
 2 update(s) available.
 ```
 
-### Lookup problems
+#### Lookup problems
 
 A dependency that could not be looked up is never dropped silently:
 
@@ -267,6 +286,8 @@ The tests need no network: the deps.dev and repository clients run against local
 ### Publishing
 
 Runs automatically in the CI pipeline when a Git tag is pushed. Publishes to the GitLab Package Registry — `CI_JOB_TOKEN` is set automatically.
+The repository reaches GitHub through a GitLab push mirror; the pipeline then creates the GitHub release with the
+`CHANGELOG.md` entry of the tag and the JARs attached.
 
 ### Project structure
 
@@ -290,8 +311,8 @@ src/main/kotlin/one/epicsoft/gradle/
 
 1. Bump `version` in `gradle.properties` and in this README
 2. Set the release date of the version in `CHANGELOG.md`
-3. Set a Git tag: `git tag 0.4.0 && git push --tags` — tags carry no `v` (the CI would strip one)
-4. The CI pipeline publishes to the GitLab Package Registry automatically
+3. Set a Git tag: `git tag 0.4.1 && git push --tags` — tags carry no `v` (the CI would strip one)
+4. The CI pipeline publishes to the GitLab Package Registry and creates the GitHub release automatically
 5. Update the version in the consuming projects
 
 ---
@@ -308,3 +329,9 @@ src/main/kotlin/one/epicsoft/gradle/
 | Concurrency | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
 
 > **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.8.0 bundles Kotlin 2.4.10.
+
+---
+
+## License
+
+[MIT](LICENSE)

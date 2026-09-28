@@ -1,0 +1,3 @@
+[tools]
+gradle = "9.8.0"
+java = "25.0.4.1+1-tem"

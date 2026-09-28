@@ -10,9 +10,11 @@ build/
 *.iws
 out/
 .kotlin/
-CLAUDE.md
-.claude/
 local.properties
 *.log
 .DS_Store
 Thumbs.db
+
+### AI assistant ###
+CLAUDE.md
+.claude/

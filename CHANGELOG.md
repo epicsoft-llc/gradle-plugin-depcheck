@@ -1,6 +1,19 @@
 # Changelog
 
+All notable changes to this project are documented here.
+The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
+the versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
+
+## [0.4.1] - 2026-09-28
+
+### Added
+- MIT license
+- Sources JAR next to the plugin JAR
+- CI creates a GitHub release for every tag, with the changelog entry and the JARs attached
+
+### Changed
+- README: plugin repository to declare in `settings.gradle`, links to GitLab and the GitHub mirror
 
 ## [0.4.0] - 2026-09-26
 
