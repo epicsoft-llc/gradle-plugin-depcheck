@@ -342,4 +342,6 @@ src/main/kotlin/one/epicsoft/gradle/
 
 ## License
 
-[MIT](LICENSE)
+[MIT](https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck/-/blob/main/LICENSE)
+
+The MIT license applies only to files created by epicsoft LLC. Third-party files, such as the Gradle wrapper, remain under their own licenses.
