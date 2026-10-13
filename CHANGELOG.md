@@ -5,6 +5,16 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
 
+## [0.5.0] - 2026-10-13
+
+### Changed
+- Plugin id renamed to `one.epicsoft.depcheck`, matching the repository name. The `depsUpdate {}` configuration and
+  the `checkDependencyUpdates` task stay the same
+
+### Deprecated
+- Plugin id `one.epicsoft.deps-update`: still published with every release and working, but logs a warning — replace
+  it in `plugins {}`, `apply plugin:` and the version catalog. It will be removed in a later release
+
 ## [0.4.1] - 2026-09-28
 
 ### Added

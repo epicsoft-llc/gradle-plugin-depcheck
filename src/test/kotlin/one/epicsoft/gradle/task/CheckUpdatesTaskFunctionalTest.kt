@@ -5,6 +5,7 @@ import org.junit.jupiter.api.Test
 import org.junit.jupiter.api.io.TempDir
 import java.io.File
 import kotlin.test.assertContains
+import kotlin.test.assertEquals
 import kotlin.test.assertFalse
 
 /**
@@ -20,7 +21,7 @@ class CheckUpdatesTaskFunctionalTest {
     fun `runs from the configuration cache without deprecations`() {
         File(dir, "settings.gradle").writeText("rootProject.name = 'sample'\ninclude 'sub'\n")
         File(dir, "build.gradle").writeText(
-            "plugins { id 'one.epicsoft.deps-update' }\n" +
+            "plugins { id 'one.epicsoft.depcheck' }\n" +
                 "depsUpdate { checkGradleWrapper = false; mavenRepositories = ['https://repo.example.com/maven'] }\n"
         )
         File(dir, "sub").mkdirs()
@@ -41,7 +42,7 @@ class CheckUpdatesTaskFunctionalTest {
     fun `credentials in a repository URL are refused without being printed`() {
         File(dir, "settings.gradle").writeText("rootProject.name = 'sample'\n")
         File(dir, "build.gradle").writeText(
-            "plugins { id 'one.epicsoft.deps-update' }\n" +
+            "plugins { id 'one.epicsoft.depcheck' }\n" +
                 "depsUpdate { checkGradleWrapper = false; mavenRepositories = ['https://user:s3cr3t@repo.example.com/maven'] }\n"
         )
 
@@ -54,5 +55,28 @@ class CheckUpdatesTaskFunctionalTest {
 
         assertContains(output, "credentials in the URL are not supported (host repo.example.com)")
         assertFalse(output.contains("s3cr3t"), output)
+    }
+
+    @Test
+    fun `the old plugin id still works and warns once`() {
+        File(dir, "settings.gradle").writeText("rootProject.name = 'sample'\ninclude 'sub'\n")
+        File(dir, "build.gradle").writeText(
+            "plugins { id 'one.epicsoft.deps-update' }\n" +
+                "depsUpdate { checkGradleWrapper = false }\n" +
+                "subprojects { apply plugin: 'one.epicsoft.deps-update' }\n"
+        )
+        File(dir, "sub").mkdirs()
+        File(dir, "sub/build.gradle").writeText("")
+
+        val output = GradleRunner.create()
+            .withProjectDir(dir)
+            .withPluginClasspath()
+            .withArguments(":checkDependencyUpdates", ":sub:checkDependencyUpdates")
+            .build()
+            .output
+
+        assertEquals(1, output.split("Plugin id \"one.epicsoft.deps-update\" is deprecated").size - 1, output)
+        assertContains(output, "apply \"one.epicsoft.depcheck\" instead (root project 'sample')")
+        assertContains(output, "All dependencies are up-to-date.")
     }
 }
