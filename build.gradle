@@ -11,7 +11,7 @@ gradlePlugin {
     create("depcheck") {
       id = "one.epicsoft.depcheck"
       displayName = "Epicsoft Dependency Update Checker"
-      description = "Checks for newer versions of dependencies and Gradle plugins via the deps.dev API"
+      description = "Reports newer versions of dependencies, Gradle plugins and the Gradle wrapper via deps.dev and optional Maven repositories"
       implementationClass = "one.epicsoft.gradle.DepsUpdatePlugin"
     }
     // Plugin id up to 0.4.1 - still published so existing builds work and find the new releases; logs a warning

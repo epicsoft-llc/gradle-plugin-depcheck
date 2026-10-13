@@ -1,8 +1,11 @@
-# DepCheck Gradle Plugin
+# DepCheck — Dependency Update Checker for Gradle
 
-Gradle plugin that checks for newer versions of your dependencies and Gradle plugins by querying the [Google deps.dev](https://deps.dev) Open Source Insights API.
+Gradle plugin that reports newer versions of your dependencies, Gradle plugins and the Gradle wrapper. It asks the
+[Google deps.dev](https://deps.dev) Open Source Insights API and, for your own artifacts, the Maven repositories you list.
 
 Supports both `gradle/libs.versions.toml` (Version Catalog) and `build.gradle` / `build.gradle.kts`.
+
+Requires a Gradle daemon running on Java 25 or later; your own code can still target Java 17+.
 
 - Plugin id: `one.epicsoft.depcheck` — up to 0.4.1 `one.epicsoft.deps-update`, see [Migrating from the old plugin id](#migrating-from-the-old-plugin-id)
 - License: MIT
@@ -53,7 +56,7 @@ the same:
 
 ```groovy
 depsUpdate {
-  verbose           = true   // default: false — show the deps.dev URL for every entry
+  verbose           = true   // default: false — like showAll, plus where each entry was found and the entries not checked
   showAll           = true   // default: false — show all checked dependencies, not only updates
   failOnUpdates     = true   // default: false — fail the build when updates are available
   includePreRelease = true   // default: false — count RC, Alpha, Beta, Milestone as valid updates
@@ -82,10 +85,10 @@ depsUpdate {
 
 | Option | Type | Default | Description |
 |---|---|---|---|
-| `verbose`           | `Boolean` | `false` | Show all dependencies (incl. current ones) + the deps.dev URL for every entry |
+| `verbose`           | `Boolean` | `false` | Show all dependencies (incl. current ones) + where every entry was found (deps.dev, the Maven repository, Gradle releases for the wrapper) + the entries not checked and why |
 | `showAll`           | `Boolean` | `false` | Show all checked dependencies, not only updates (implied by `verbose`) |
 | `failOnUpdates`     | `Boolean` | `false` | The build fails when at least one update is available |
-| `includePreRelease` | `Boolean` | `false` | Count RC, Alpha, Beta and Milestone versions as newer versions |
+| `includePreRelease` | `Boolean` | `false` | Count pre-releases (snapshot, alpha, beta, RC, milestone, build) as newer versions |
 | `exclude`           | `List<String>` | `[]` | Coordinates skipped entirely (`group:name` or plugin ID) |
 | `maxVersion`        | `Map<String, String>` | `{}` | Version pattern per coordinate: numbers = cap, trailing `x` = level at which an update counts (table below) |
 | `checkGradleWrapper` | `Boolean` | `true` | Check the Gradle Wrapper version via `services.gradle.org` |
@@ -165,7 +168,7 @@ depsUpdate {
 > depsUpdate { exclude = ["com.example:shared-exclude"] }  // ← at root level
 >
 > subprojects {
->   apply plugin: "one.epicsoft.depcheck"  // the plugin is already applied via cascade
+>   apply plugin: "one.epicsoft.depcheck"  // optional: the root plugin already applies it to every subproject
 >   // no depsUpdate {} here
 > }
 > ```
@@ -189,15 +192,6 @@ Available updates (2):
   [plugin ]  org.springframework.boot                                 3.2.0  →  3.4.1
 ```
 
-**`verbose = true` — updates + deps.dev URL:**
-```
-Available updates (2):
-  [library]  org.springframework.boot:spring-boot-starter             3.2.0  →  3.4.1
-    https://deps.dev/maven/org.springframework.boot:spring-boot-starter
-  [plugin ]  org.springframework.boot                                 3.2.0  →  3.4.1
-    https://deps.dev/maven/org.springframework.boot:org.springframework.boot.gradle.plugin
-```
-
 **`showAll = true` — all dependencies:**
 ```
 Checked 3 dependencies:
@@ -208,7 +202,7 @@ Checked 3 dependencies:
 2 update(s) available.
 ```
 
-**`showAll = true` + `verbose = true` — all dependencies with URL:**
+**`verbose = true` — all dependencies with link (`showAll` is implied):**
 ```
 Checked 3 dependencies:
   [library]  com.fasterxml.jackson.core:jackson-databind              2.18.3
@@ -240,6 +234,7 @@ Failed lookups do not fail the build on their own; `failOnUpdates` only reacts t
 | Source | Content |
 |---|---|
 | `gradle/libs.versions.toml` | `[libraries]` and `[plugins]` (incl. `version.ref` resolution, all notations) |
+| `gradle/wrapper/gradle-wrapper.properties` | Gradle version, against `services.gradle.org` (`checkGradleWrapper`) |
 | `build.gradle` / `build.gradle.kts` | `implementation`, `api`, `compileOnly`, `runtimeOnly`, `testImplementation`, `testRuntimeOnly`, `testCompileOnly`, `testAnnotationProcessor`, `annotationProcessor`, `developmentOnly`, `classpath` — also wrapped in `platform(…)` / `enforcedPlatform(…)` —, `mavenBom` (Spring dependency management) + `plugins {}` block |
 
 Versions may come from a variable in the same file (`def`, `val`, `ext.`), from the root `gradle.properties` or from the
