@@ -2,7 +2,7 @@
 
 Guidance for coding agents working in this repository. User documentation lives in [`README.md`](README.md).
 
-Gradle plugin that checks for newer versions of dependencies and Gradle plugins by querying the [Google deps.dev](https://deps.dev) Open Source Insights API.
+Gradle plugin that reports newer versions of dependencies, Gradle plugins and the Gradle wrapper — via the [Google deps.dev](https://deps.dev) Open Source Insights API and, for what deps.dev does not know, configured Maven repositories.
 
 ## Coordinates
 
