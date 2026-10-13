@@ -8,11 +8,18 @@ group = "one.epicsoft"
 
 gradlePlugin {
   plugins {
-    create("depsUpdate") {
-      id = "one.epicsoft.deps-update"
+    create("depcheck") {
+      id = "one.epicsoft.depcheck"
       displayName = "Epicsoft Dependency Update Checker"
       description = "Checks for newer versions of dependencies and Gradle plugins via the deps.dev API"
       implementationClass = "one.epicsoft.gradle.DepsUpdatePlugin"
+    }
+    // Plugin id up to 0.4.1 - still published so existing builds work and find the new releases; logs a warning
+    create("depsUpdate") {
+      id = "one.epicsoft.deps-update"
+      displayName = "Epicsoft Dependency Update Checker (deprecated id, use one.epicsoft.depcheck)"
+      description = "Deprecated plugin id of one.epicsoft.depcheck"
+      implementationClass = "one.epicsoft.gradle.LegacyDepsUpdatePlugin"
     }
   }
 }
