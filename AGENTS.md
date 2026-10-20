@@ -115,14 +115,14 @@ The task must **never touch `Task.project` at execution time** — deprecated in
 
 | | |
 |---|---|
-| **Gradle** | 9.8.0 (`services.gradle.org`) |
+| **Gradle** | 9.8.2 (`services.gradle.org`) |
 | **Kotlin** | 2.4.10 — must match Gradle's bundled Kotlin version |
 | **Java toolchain** | 25 — Gradle daemon must run on Java 25+; consumer projects may target Java 17+ |
 | **Gson** | 2.14.0 — only runtime dependency |
 | **Tests** | JUnit 6 (`junit-bom`) + `kotlin-test`; TestKit via `java-gradle-plugin` |
 | **CI Image** | `epicsoft/openjdk:jdk25`; `epicsoft/ci:latest` for the GitHub release |
 
-> **Important:** The Kotlin plugin version (`org.jetbrains.kotlin.jvm`) **must** match the Kotlin version bundled with the Gradle wrapper in use — read it from `./gradlew --version` ("Kotlin:"), not from the newest Kotlin release. Gradle 9.8.0 bundles Kotlin 2.4.10. Mismatches cause `incompatible version of Kotlin` compiler errors.
+> **Important:** The Kotlin plugin version (`org.jetbrains.kotlin.jvm`) **must** match the Kotlin version bundled with the Gradle wrapper in use — read it from `./gradlew --version` ("Kotlin:"), not from the newest Kotlin release. Gradle 9.8.2 bundles Kotlin 2.4.10. Mismatches cause `incompatible version of Kotlin` compiler errors.
 
 ## Repositories
 

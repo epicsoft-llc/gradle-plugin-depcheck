@@ -330,13 +330,13 @@ src/main/kotlin/one/epicsoft/gradle/
 | | |
 |---|---|
 | Language | Kotlin 2.4.10 |
-| Gradle | 9.8.0 |
+| Gradle | 9.8.2 |
 | HTTP | `java.net.http.HttpClient` (no external framework) |
 | JSON | Gson 2.14.0 |
 | Tests | JUnit 6 + `kotlin-test` |
 | Concurrency | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
 
-> **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.8.0 bundles Kotlin 2.4.10.
+> **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.8.2 bundles Kotlin 2.4.10.
 
 ---
 
