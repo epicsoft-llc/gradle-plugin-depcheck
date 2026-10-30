@@ -2,24 +2,39 @@ plugins {
   id "java-gradle-plugin"
   id "org.jetbrains.kotlin.jvm" version "2.4.10"
   id "maven-publish"
+  id "com.gradle.plugin-publish" version "2.2.1"
 }
 
 group = "one.epicsoft"
 
 gradlePlugin {
+  website = "https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck"
+  vcsUrl = "https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck.git"
   plugins {
     create("depcheck") {
       id = "one.epicsoft.depcheck"
       displayName = "Epicsoft Dependency Update Checker"
       description = "Reports newer versions of dependencies, Gradle plugins and the Gradle wrapper via deps.dev and optional Maven repositories"
+      tags.addAll("dependencies", "dependency-updates", "versions", "version-catalog", "deps.dev")
       implementationClass = "one.epicsoft.gradle.DepsUpdatePlugin"
+      compatibility(it) {
+        features {
+          configurationCache = true
+        }
+      }
     }
     // Plugin id up to 0.4.1 - still published so existing builds work and find the new releases; logs a warning
     create("depsUpdate") {
       id = "one.epicsoft.deps-update"
       displayName = "Epicsoft Dependency Update Checker (deprecated id, use one.epicsoft.depcheck)"
       description = "Deprecated plugin id of one.epicsoft.depcheck"
+      tags.addAll("dependencies", "dependency-updates", "versions", "version-catalog", "deps.dev")
       implementationClass = "one.epicsoft.gradle.LegacyDepsUpdatePlugin"
+      compatibility(it) {
+        features {
+          configurationCache = true
+        }
+      }
     }
   }
 }

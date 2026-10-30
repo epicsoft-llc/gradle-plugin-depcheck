@@ -5,6 +5,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
 
+## [0.5.1] - 2026-10-30
+
+### Added
+- Published to the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/one.epicsoft.depcheck) under both plugin ids,
+  so `plugins { id "one.epicsoft.depcheck" }` needs no repository. The GitLab package registry keeps receiving every
+  release
+- Javadoc JAR next to the plugin and sources JARs
+
+### Changed
+- Gradle wrapper 9.8.2
+
 ## [0.5.0] - 2026-10-13
 
 ### Changed

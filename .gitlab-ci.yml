@@ -35,6 +35,19 @@ publish:
   rules:
     - if: $CI_COMMIT_TAG
 
+#### GRADLE_PUBLISH_KEY / GRADLE_PUBLISH_SECRET: Plugin Portal API key, masked and protected - plugin-publish reads them itself.
+publish-portal:
+  stage: publish
+  image: epicsoft/openjdk:jdk25
+  needs:
+    - job: build
+      artifacts: false
+  script:
+    - VERSION=${CI_COMMIT_TAG#v}
+    - ./gradlew publishPlugins -Pversion=$VERSION
+  rules:
+    - if: $CI_COMMIT_TAG
+
 #### The code reaches GitHub through the GitLab push mirror, so this job waits for the tag there.
 #### GITHUB_TOKEN: fine-grained token with Contents read and write, a protected variable - the tag must be protected too.
 github-release:

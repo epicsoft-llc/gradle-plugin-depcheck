@@ -16,6 +16,7 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 | **Main class** | `one.epicsoft.gradle.DepsUpdatePlugin` |
 | **Task** | `checkDependencyUpdates` |
 | **Repository** | developed on `gitlab.com/epicsoft-networks/gradle-plugin-depcheck`, mirrored to `github.com/epicsoft-llc/gradle-plugin-depcheck` |
+| **Plugin Portal** | `plugins.gradle.org/plugin/one.epicsoft.depcheck` — both plugin ids, since 0.5.1 |
 
 ## Rules
 
@@ -40,7 +41,8 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 ./gradlew checkDependencyUpdates  # Only works when consumed by another project
 ```
 
-Publishing runs via CI only — push a Git tag to trigger the `publish` job.
+Publishing runs via CI only — push a Git tag to trigger the `publish` and `publish-portal` jobs.
+`./gradlew publishPlugins --validate-only` checks the Plugin Portal metadata locally and uploads nothing.
 
 ## Architecture
 
@@ -121,6 +123,7 @@ The task must **never touch `Task.project` at execution time** — deprecated in
 | **Gson** | 2.14.0 — only runtime dependency |
 | **Tests** | JUnit 6 (`junit-bom`) + `kotlin-test`; TestKit via `java-gradle-plugin` |
 | **CI Image** | `epicsoft/openjdk:jdk25`; `epicsoft/ci:latest` for the GitHub release |
+| **Publishing** | `com.gradle.plugin-publish` 2.2.1 — adds the Javadoc JAR; every plugin in `gradlePlugin` needs `tags` and a `compatibility(it)` block |
 
 > **Important:** The Kotlin plugin version (`org.jetbrains.kotlin.jvm`) **must** match the Kotlin version bundled with the Gradle wrapper in use — read it from `./gradlew --version` ("Kotlin:"), not from the newest Kotlin release. Gradle 9.8.2 bundles Kotlin 2.4.10. Mismatches cause `incompatible version of Kotlin` compiler errors.
 
@@ -130,7 +133,7 @@ The task must **never touch `Task.project` at execution time** — deprecated in
 |---|---|
 | Plugin resolution | Gradle Plugin Portal |
 | Dependency resolution | Maven Central |
-| Publish target | GitLab Package Registry (`CI_JOB_TOKEN`), project id `82634030` |
+| Publish target | GitLab Package Registry (`CI_JOB_TOKEN`), project id `82634030`; Gradle Plugin Portal (`GRADLE_PUBLISH_KEY`, `GRADLE_PUBLISH_SECRET`) |
 
 ## CI/CD
 
@@ -140,6 +143,7 @@ Pipeline: `.gitlab-ci.yml`
 |---|---|---|
 | `build` | every push | `./gradlew build` (incl. tests), JAR + sources JAR as artifact (1 week), JUnit report — kept even when the build fails |
 | `publish` | Git tag | `./gradlew publish` → GitLab Package Registry |
+| `publish-portal` | Git tag | `./gradlew publishPlugins` → Gradle Plugin Portal; CI variables `GRADLE_PUBLISH_KEY` and `GRADLE_PUBLISH_SECRET` (masked, protected), read by plugin-publish itself. A new plugin id waits for a manual review; a version there cannot be replaced |
 | `github-release` | Git tag, after `publish` | image `epicsoft/ci:latest`; waits for the tag on GitHub, creates the release from the `CHANGELOG.md` entry, attaches the JARs |
 
 **GitHub mirror:** the repository reaches GitHub through a GitLab push mirror. `github-release` needs the CI variable `GITHUB_TOKEN` (masked, protected) — protected, so the tags must be protected (`*.*.*`) or the job sees no token. The tag needs a `CHANGELOG.md` entry, otherwise the job fails.
@@ -167,11 +171,12 @@ Options, defaults and examples are documented in [`README.md`](README.md). Point
 
 - Scalar options (`verbose`, `showAll`, `failOnUpdates`, `includePreRelease`, `checkGradleWrapper`, `checkSubprojects`) and `mavenRepositories` are inherited from root as conventions — a subproject can override them by setting the value explicitly.
 - For `exclude` and `maxVersion`: only root defines it → subproject inherits; only subproject defines it → subproject value; both define it → `excludeMode` / `maxVersionMode` **must** be set in the subproject, otherwise a `GradleException` is thrown at task execution time.
-- The consumer's `settings.gradle` needs the GitLab Package Registry as plugin repository.
+- Since 0.5.1 consumers get the plugin from the Gradle Plugin Portal without declaring a repository; releases up to
+  0.5.0 are only in the GitLab Package Registry.
 
 ## Release checklist
 
 - Bump `version` in `gradle.properties`
 - Update version in `README.md` (all occurrences — plugin block + tag command)
-- `CHANGELOG.md`: rename `## [Unreleased]` to `## [X.Y.Z] - <date>` — `github-release` takes the release notes from exactly that heading
-- Push a Git tag **without `v`** (`0.3.0`, like all existing tags) to trigger the CI publish job — the tag, not `gradle.properties`, sets the published version (`-Pversion=${CI_COMMIT_TAG#v}`)
+- `CHANGELOG.md`: the entry goes under `## [X.Y.Z] - <date>` of the coming release, never `[Unreleased]` — `github-release` takes the release notes from exactly that heading
+- Push a Git tag **without `v`** (`0.3.0`, like all existing tags) to trigger the CI publish jobs — the tag, not `gradle.properties`, sets the published version (`-Pversion=${CI_COMMIT_TAG#v}`)

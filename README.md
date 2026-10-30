@@ -16,12 +16,14 @@ Requires a Gradle daemon running on Java 25 or later; your own code can still ta
 
 ## Usage
 
-### 1. Declare the plugin repository
+### 1. Plugin repository
 
-The plugin is published to a GitLab package registry that is readable without credentials:
+From 0.5.1 on the plugin is on the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/one.epicsoft.depcheck), which
+Gradle asks by default — there is nothing to declare. Every release, the older ones included, is also in a GitLab package
+registry that is readable without credentials:
 
 ```groovy
-// settings.gradle
+// settings.gradle — only needed for releases up to 0.5.0
 pluginManagement {
   repositories {
     gradlePluginPortal()
@@ -36,7 +38,7 @@ Add the plugin to `build.gradle`:
 
 ```groovy
 plugins {
-  id "one.epicsoft.depcheck" version "0.5.0"
+  id "one.epicsoft.depcheck" version "0.5.1"
 }
 ```
 
@@ -292,9 +294,16 @@ The tests need no network: the deps.dev and repository clients run against local
 
 ### Publishing
 
-Runs automatically in the CI pipeline when a Git tag is pushed. Publishes to the GitLab Package Registry — `CI_JOB_TOKEN` is set automatically.
+Runs automatically in the CI pipeline when a Git tag is pushed: `publish` to the GitLab Package Registry (`CI_JOB_TOKEN`
+is set automatically) and `publish-portal` to the Gradle Plugin Portal (CI variables `GRADLE_PUBLISH_KEY` and
+`GRADLE_PUBLISH_SECRET`, masked and protected). A version on the Portal cannot be replaced, and a new plugin id waits for
+a manual review there.
 The repository reaches GitHub through a GitLab push mirror; the pipeline then creates the GitHub release with the
 `CHANGELOG.md` entry of the tag and the JARs attached.
+
+```bash
+./gradlew publishPlugins --validate-only   # checks the Portal metadata, uploads nothing
+```
 
 ### Project structure
 
@@ -318,9 +327,10 @@ src/main/kotlin/one/epicsoft/gradle/
 ### Releasing a new version
 
 1. Bump `version` in `gradle.properties` and in this README
-2. Set the release date of the version in `CHANGELOG.md`
-3. Set a Git tag: `git tag 0.5.0 && git push --tags` — tags carry no `v` (the CI would strip one)
-4. The CI pipeline publishes to the GitLab Package Registry and creates the GitHub release automatically
+2. Head the `CHANGELOG.md` entry with `## [X.Y.Z] - <date>` of the coming release — never `[Unreleased]`
+3. Set a Git tag: `git tag 0.5.1 && git push --tags` — tags carry no `v` (the CI would strip one)
+4. The CI pipeline publishes to the GitLab Package Registry and the Gradle Plugin Portal and creates the GitHub release
+   automatically
 5. Update the version in the consuming projects
 
 ---
