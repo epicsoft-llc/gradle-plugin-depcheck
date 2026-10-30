@@ -10,4 +10,4 @@ dependencyResolutionManagement {
   }
 }
 
-rootProject.name = "epicsoft-gradle-plugin"
+rootProject.name = "epicsoft-gradle-plugin-depcheck"

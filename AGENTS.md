@@ -11,7 +11,7 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 | **Plugin ID** | `one.epicsoft.depcheck` (since 0.5.0) |
 | **Legacy plugin ID** | `one.epicsoft.deps-update` — deprecated since 0.5.0, still declared in `build.gradle` so old builds keep working and their update check finds new releases; `LegacyDepsUpdatePlugin` warns once per build and applies the main plugin |
 | **Group** | `one.epicsoft` |
-| **Artifact** | `epicsoft-gradle-plugin` — the published coordinate, do not rename `rootProject.name` |
+| **Artifact** | `epicsoft-gradle-plugin-depcheck` (up to 0.5.0 `epicsoft-gradle-plugin`) — the published coordinate, do not rename `rootProject.name` |
 | **Version** | see `gradle.properties` → `version` |
 | **Main class** | `one.epicsoft.gradle.DepsUpdatePlugin` |
 | **Task** | `checkDependencyUpdates` |

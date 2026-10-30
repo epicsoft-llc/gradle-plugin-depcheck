@@ -14,6 +14,9 @@ Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
 - Javadoc JAR next to the plugin and sources JARs
 
 ### Changed
+- Artifact renamed from `one.epicsoft:epicsoft-gradle-plugin` to `one.epicsoft:epicsoft-gradle-plugin-depcheck`.
+  `plugins {}` resolves the plugin through its id and is not affected; only a direct reference to the old coordinate
+  needs the new name
 - Gradle wrapper 9.8.2
 
 ## [0.5.0] - 2026-10-13
