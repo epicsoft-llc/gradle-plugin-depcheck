@@ -25,19 +25,6 @@ gradlePlugin {
         }
       }
     }
-    // Plugin id up to 0.4.1 - still published so existing builds work and find the new releases; logs a warning
-    create("depsUpdate") {
-      id = "one.epicsoft.deps-update"
-      displayName = "Epicsoft Dependency Update Checker (deprecated id, use one.epicsoft.depcheck)"
-      description = "Deprecated plugin id of one.epicsoft.depcheck"
-      tags.addAll("dependencies", "dependency-updates", "versions", "version-catalog", "deps.dev")
-      implementationClass = "one.epicsoft.gradle.LegacyDepsUpdatePlugin"
-      compatibility(it) {
-        features {
-          configurationCache = true
-        }
-      }
-    }
   }
 }
 

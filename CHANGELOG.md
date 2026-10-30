@@ -5,6 +5,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
 
+## [0.6.0] - 2026-10-30
+
+### Removed
+- Plugin id `one.epicsoft.deps-update`, deprecated since 0.5.0. Apply `one.epicsoft.depcheck` instead — in `plugins {}`,
+  `apply plugin:`, the version catalog and `exclude` or `maxVersion` entries that name the old id; the `depsUpdate {}`
+  configuration and the `checkDependencyUpdates` task stay the same. Releases up to 0.5.1 under the old id remain in the
+  GitLab package registry
+
 ## [0.5.1] - 2026-10-30
 
 ### Added

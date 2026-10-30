@@ -7,7 +7,8 @@ Supports both `gradle/libs.versions.toml` (Version Catalog) and `build.gradle` /
 
 Requires a Gradle daemon running on Java 25 or later; your own code can still target Java 17+.
 
-- Plugin id: `one.epicsoft.depcheck` — up to 0.4.1 `one.epicsoft.deps-update`, see [Migrating from the old plugin id](#migrating-from-the-old-plugin-id)
+- Plugin id: `one.epicsoft.depcheck` — up to 0.4.1 `one.epicsoft.deps-update`, an id removed in 0.6.0 (see the
+  [changelog](https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck/-/blob/main/CHANGELOG.md))
 - License: MIT
 - Source: developed on [GitLab](https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck), mirrored to
   [GitHub](https://github.com/epicsoft-llc/gradle-plugin-depcheck) — issues are welcome on both; code changes only as merge requests on GitLab, the mirror cannot take pull requests
@@ -38,21 +39,9 @@ Add the plugin to `build.gradle`:
 
 ```groovy
 plugins {
-  id "one.epicsoft.depcheck" version "0.5.1"
+  id "one.epicsoft.depcheck" version "0.6.0"
 }
 ```
-
-#### Migrating from the old plugin id
-
-Up to 0.4.1 the plugin id was `one.epicsoft.deps-update`. The old id is still published with every release and keeps
-working, so the update check still reports new versions under it — but it logs a warning and will be removed in a later
-release. Replace it wherever it appears; the `depsUpdate {}` configuration and the `checkDependencyUpdates` task stay
-the same:
-
-- `plugins {}`: `id "one.epicsoft.deps-update"` → `id "one.epicsoft.depcheck"`
-- `apply plugin: "one.epicsoft.deps-update"` → `apply plugin: "one.epicsoft.depcheck"`
-- version catalog `[plugins]`: `id = "one.epicsoft.depcheck"`
-- `exclude` and `maxVersion` entries that name the old plugin id
 
 ### 3. Configuration (optional)
 
@@ -315,7 +304,6 @@ features treated as errors, so they show up before the next Gradle major removes
 ```
 src/main/kotlin/one/epicsoft/gradle/
 ├── DepsUpdatePlugin.kt          # Registers extension + task
-├── LegacyDepsUpdatePlugin.kt    # Old plugin id: warns, then applies DepsUpdatePlugin
 ├── DepsUpdateExtension.kt       # Configuration (verbose, exclude, maxVersion, …)
 ├── task/CheckUpdatesTask.kt     # Task implementation
 ├── api/DepsDevClient.kt         # deps.dev HTTP client
@@ -333,7 +321,7 @@ src/main/kotlin/one/epicsoft/gradle/
 
 1. Bump `version` in `gradle.properties` and in this README
 2. Head the `CHANGELOG.md` entry with `## [X.Y.Z] - <date>` of the coming release — never `[Unreleased]`
-3. Set a Git tag: `git tag 0.5.1 && git push --tags` — tags carry no `v` (the CI would strip one)
+3. Set a Git tag: `git tag 0.6.0 && git push --tags` — tags carry no `v` (the CI would strip one)
 4. The CI pipeline publishes to the GitLab Package Registry and the Gradle Plugin Portal and creates the GitHub release
    automatically
 5. Update the version in the consuming projects

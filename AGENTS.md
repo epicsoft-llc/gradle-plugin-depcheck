@@ -8,15 +8,14 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 
 | | |
 |---|---|
-| **Plugin ID** | `one.epicsoft.depcheck` (since 0.5.0) |
-| **Legacy plugin ID** | `one.epicsoft.deps-update` — deprecated since 0.5.0, still declared in `build.gradle` so old builds keep working and their update check finds new releases; `LegacyDepsUpdatePlugin` warns once per build and applies the main plugin |
+| **Plugin ID** | `one.epicsoft.depcheck` (since 0.5.0; up to 0.4.1 `one.epicsoft.deps-update`, which was published until 0.5.1 and removed in 0.6.0) |
 | **Group** | `one.epicsoft` |
 | **Artifact** | `epicsoft-gradle-plugin-depcheck` (up to 0.5.0 `epicsoft-gradle-plugin`) — the published coordinate, do not rename `rootProject.name` |
 | **Version** | see `gradle.properties` → `version` |
 | **Main class** | `one.epicsoft.gradle.DepsUpdatePlugin` |
 | **Task** | `checkDependencyUpdates` |
 | **Repository** | developed on `gitlab.com/epicsoft-networks/gradle-plugin-depcheck`, mirrored to `github.com/epicsoft-llc/gradle-plugin-depcheck` |
-| **Plugin Portal** | `plugins.gradle.org/plugin/one.epicsoft.depcheck` — both plugin ids, since 0.5.1 |
+| **Plugin Portal** | `plugins.gradle.org/plugin/one.epicsoft.depcheck`, since 0.5.1 |
 
 ## Rules
 
@@ -52,7 +51,6 @@ Publishing runs via CI only — push a Git tag to trigger the `PUB:plugin` and `
 ```
 src/main/kotlin/one/epicsoft/gradle/
 ├── DepsUpdatePlugin.kt          # Plugin entry point — registers extension + task
-├── LegacyDepsUpdatePlugin.kt    # Legacy plugin id: warning, then applies DepsUpdatePlugin
 ├── DepsUpdateExtension.kt       # Extension: depsUpdate { verbose = true; showAll = true }
 ├── task/
 │   └── CheckUpdatesTask.kt      # @DisableCachingByDefault — parallel HTTP via virtual threads
@@ -172,9 +170,6 @@ publishes without them.
 - **Parser changes**: add the notation to `VersionCatalogParserTest` / `BuildGradleParserTest`
 - **New task input**: never read it from `project` inside `@TaskAction` — add a task property and set it in `registerTask`
 - **New version**: see the release checklist
-- **Dropping the legacy plugin ID**: remove its `create("depsUpdate")` block in `build.gradle`, `LegacyDepsUpdatePlugin`,
-  its test in `CheckUpdatesTaskFunctionalTest`, the migration section in `README.md` and the "Legacy plugin ID" row under Coordinates; a breaking
-  change for builds still on the old ID, so it goes into the CHANGELOG under `Removed`
 
 ## Consuming projects
 
