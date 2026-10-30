@@ -100,6 +100,24 @@ DEP:plugin:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
 
+#### Every task the pipeline uses, with deprecated Gradle features as errors - a warning before the next Gradle major breaks them.
+UPG:gradle:
+  stage: test
+  image: epicsoft/openjdk:jdk25
+  needs:
+    - job: "BLD:plugin"
+      artifacts: false
+  script:
+    - ./gradlew build runtimeDependencies checkLicense publishToMavenLocal --warning-mode=fail
+  artifacts:
+    when: always
+    paths:
+      - build/reports/problems/
+    expire_in: 1 week
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
 PUB:plugin:
   stage: publish
   image: epicsoft/openjdk:jdk25

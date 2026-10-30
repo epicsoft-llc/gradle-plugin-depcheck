@@ -13,13 +13,17 @@ Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
   release
 - Javadoc JAR next to the plugin and sources JARs
 - CI on `main`, on every push and weekly: licenses (permissive only), known vulnerabilities and newer versions of the
-  runtime dependencies — the plugin checks its own build
+  runtime dependencies — the plugin checks its own build — and deprecated Gradle features
 
 ### Changed
 - Artifact renamed from `one.epicsoft:epicsoft-gradle-plugin` to `one.epicsoft:epicsoft-gradle-plugin-depcheck`.
   `plugins {}` resolves the plugin through its id and is not affected; only a direct reference to the old coordinate
   needs the new name
-- Gradle wrapper 9.8.2
+- Gradle wrapper 9.8.2, Gson 2.15.0
+
+### Security
+- Kotlin 2.4.21: the plugin brought the Kotlin standard library 2.4.10 into a build, affected by CVE-2026-53914 (fixed
+  in 2.4.20). Kotlin no longer follows the version embedded in the Gradle wrapper
 
 ## [0.5.0] - 2026-10-13
 

@@ -307,7 +307,8 @@ The repository reaches GitHub through a GitLab push mirror; the pipeline then cr
 
 On `main` the pipeline also checks the runtime dependencies — Gson and the Kotlin standard library, the JARs the plugin
 brings into your build: their licenses (`./gradlew checkLicense`, permissive licenses only), known vulnerabilities (OWASP
-dependency-check) and newer versions, with the plugin checking its own build. It runs on every push and weekly.
+dependency-check) and newer versions, with the plugin checking its own build. It also builds with deprecated Gradle
+features treated as errors, so they show up before the next Gradle major removes them. It runs on every push and weekly.
 
 ### Project structure
 
@@ -343,14 +344,16 @@ src/main/kotlin/one/epicsoft/gradle/
 
 | | |
 |---|---|
-| Language | Kotlin 2.4.10 |
+| Language | Kotlin 2.4.21 |
 | Gradle | 9.8.2 |
 | HTTP | `java.net.http.HttpClient` (no external framework) |
-| JSON | Gson 2.14.0 |
+| JSON | Gson 2.15.0 |
 | Tests | JUnit 6 + `kotlin-test` |
 | Concurrency | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
 
-> **Note:** The Kotlin plugin version must match the Kotlin version bundled with the Gradle wrapper in use. Gradle 9.8.2 bundles Kotlin 2.4.10.
+> **Note:** Gradle 9.8.2 embeds Kotlin 2.4.10. The two need not be identical, because this project compiles plain Kotlin
+> sources rather than precompiled script plugins; a genuine incompatibility shows up as `incompatible version of Kotlin`
+> at compile time.
 
 ---
 

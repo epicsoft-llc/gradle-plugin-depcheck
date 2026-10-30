@@ -121,15 +121,15 @@ The task must **never touch `Task.project` at execution time** — deprecated in
 | | |
 |---|---|
 | **Gradle** | 9.8.2 (`services.gradle.org`) |
-| **Kotlin** | 2.4.10 — must match Gradle's bundled Kotlin version |
+| **Kotlin** | 2.4.21 — the newest stable 2.x; need not equal the Kotlin embedded in the wrapper (see below) |
 | **Java toolchain** | 25 — Gradle daemon must run on Java 25+; consumer projects may target Java 17+ |
-| **Gson** | 2.14.0 — only runtime dependency |
+| **Gson** | 2.15.0 — only runtime dependency |
 | **Tests** | JUnit 6 (`junit-bom`) + `kotlin-test`; TestKit via `java-gradle-plugin` |
 | **CI Image** | `epicsoft/openjdk:jdk25`; `epicsoft/ci:latest` for the GitHub release |
 | **Publishing** | `com.gradle.plugin-publish` 2.2.1 — adds the Javadoc JAR; every plugin in `gradlePlugin` needs `tags` and a `compatibility(it)` block |
 | **License check** | `com.github.jk1.dependency-license-report` 3.1.4 — `checkLicense` against `allowed-licenses.json` (permissive licenses only); not configuration-cache compatible, the entry is discarded |
 
-> **Important:** The Kotlin plugin version (`org.jetbrains.kotlin.jvm`) **must** match the Kotlin version bundled with the Gradle wrapper in use — read it from `./gradlew --version` ("Kotlin:"), not from the newest Kotlin release. Gradle 9.8.2 bundles Kotlin 2.4.10. Mismatches cause `incompatible version of Kotlin` compiler errors.
+> **Kotlin and the wrapper:** the project compiles plain Kotlin sources, not precompiled script plugins (`kotlin-dsl`), so the Kotlin plugin (`org.jetbrains.kotlin.jvm`) need not equal the Kotlin embedded in the wrapper (`./gradlew --version`, "Kotlin:"; Gradle 9.8.2: 2.4.10). Up to 0.5.0 it was pinned to that version, which left the plugin on Kotlin 2.4.10 and CVE-2026-53914 (fixed in 2.4.20). Still look when raising the wrapper: a genuine incompatibility shows up as `incompatible version of Kotlin` at compile time.
 
 ## Repositories
 
@@ -149,12 +149,13 @@ Pipeline: `.gitlab-ci.yml`
 | `LIC:plugin` | `main` | `./gradlew checkLicense` — runtime dependencies against `allowed-licenses.json` |
 | `SEC:plugin` | `main` | OWASP dependency-check (image `owasp/dependency-check`) on `build/runtime-dependencies`, fails from CVSS 5. NVD data from a central database through the protected `ESN_DEPCHECK_*` variables, runners tagged `epicsoft`; without the variables the job does not run |
 | `DEP:plugin` | `main` | `ci/dependency-updates.init.gradle` applies the JAR from `BLD:plugin` to this build, `checkDependencyUpdates` with `failOnUpdates`; `allow_failure` |
+| `UPG:gradle` | `main` | every task the pipeline uses (`build runtimeDependencies checkLicense publishToMavenLocal`) with `--warning-mode=fail`: a deprecated Gradle feature shows up before the next Gradle major removes it; problems report as artifact, `allow_failure` |
 | `PUB:plugin` | Git tag | `./gradlew publish` → GitLab Package Registry |
 | `PUB:portal` | Git tag | `./gradlew publishPlugins` → Gradle Plugin Portal; CI variables `GRADLE_PUBLISH_KEY` and `GRADLE_PUBLISH_SECRET` (masked, protected), read by plugin-publish itself. A new plugin id waits for a manual review; a version there cannot be replaced |
 | `REL:github` | Git tag, after `PUB:plugin` | image `epicsoft/ci:latest`; waits for the tag on GitHub, creates the release from the `CHANGELOG.md` entry, attaches the JARs |
 
-`LIC`, `SEC` and `DEP` run on `main` only — on pushes and in the pipeline schedule `weekly` (Sundays); a tag publishes
-without them.
+`LIC`, `SEC`, `DEP` and `UPG` run on `main` only — on pushes and in the pipeline schedule `weekly` (Sundays); a tag
+publishes without them.
 
 **GitHub mirror:** the repository reaches GitHub through a GitLab push mirror. `REL:github` needs the CI variable `GITHUB_TOKEN` (masked, protected) — protected, so the tags must be protected (`*.*.*`) or the job sees no token. The tag needs a `CHANGELOG.md` entry, otherwise the job fails.
 

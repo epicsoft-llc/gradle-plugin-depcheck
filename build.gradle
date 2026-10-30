@@ -1,6 +1,7 @@
 plugins {
   id "java-gradle-plugin"
-  id "org.jetbrains.kotlin.jvm" version "2.4.10"
+  // Plain Kotlin sources, not kotlin-dsl: need not equal the Kotlin embedded in the wrapper (Gradle 9.8.2: 2.4.10)
+  id "org.jetbrains.kotlin.jvm" version "2.4.21"
   id "maven-publish"
   id "com.gradle.plugin-publish" version "2.2.1"
   id "com.github.jk1.dependency-license-report" version "3.1.4"
@@ -48,7 +49,7 @@ java {
 }
 
 dependencies {
-  implementation "com.google.code.gson:gson:2.14.0"
+  implementation "com.google.code.gson:gson:2.15.0"
 
   testImplementation platform("org.junit:junit-bom:6.1.3")
   testImplementation "org.junit.jupiter:junit-jupiter"
