@@ -1,5 +1,6 @@
 stages:
   - build
+  - test
   - publish
   - release
 
@@ -9,25 +10,101 @@ variables:
 before_script:
   - chmod +x ./gradlew
 
-build:
+BLD:plugin:
   stage: build
   image: epicsoft/openjdk:jdk25
   script:
-    - ./gradlew build
+    - ./gradlew build runtimeDependencies
   artifacts:
     #### always: the test report is most useful when the build failed
     when: always
     paths:
       - build/libs/*.jar
+      - build/runtime-dependencies/
     reports:
       junit: build/test-results/test/*.xml
     expire_in: 1 week
 
-publish:
+#### LIC, SEC and DEP run on main only - pushes and the schedule "weekly"; a tag publishes without them.
+LIC:plugin:
+  stage: test
+  image: epicsoft/openjdk:jdk25
+  needs:
+    - job: "BLD:plugin"
+      artifacts: false
+  script:
+    - ./gradlew checkLicense
+  artifacts:
+    when: always
+    paths:
+      - build/reports/dependency-license/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+#### The NVD data come from a central database of the maintainers; nothing about it is written here, and without the
+#### ESN_DEPCHECK_* variables (protected) the job does not run. Only the runners tagged epicsoft reach the database.
+SEC:plugin:
+  stage: test
+  tags: [ "epicsoft" ]
+  image:
+    name: owasp/dependency-check:latest
+    entrypoint: [""]
+  needs:
+    - job: "BLD:plugin"
+      artifacts: true
+  before_script: [ ]
+  script:
+    - |
+      #### A properties file keeps the credentials out of the process list; '\' is its escape character
+      props=$(mktemp)
+      printf 'data.connection_string=jdbc:mysql://%s:3306/dependencycheck\ndata.user=%s\ndata.password=%s\n' \
+        "${ESN_DEPCHECK_HOSTNAME}" \
+        "$(printf '%s' "${ESN_DEPCHECK_USERNAME}" | sed 's/\\/\\\\/g')" \
+        "$(printf '%s' "${ESN_DEPCHECK_PASSWORD}" | sed 's/\\/\\\\/g')" > "$props"
+      mkdir -p dependency-check
+      status=0
+      /usr/share/dependency-check/bin/dependency-check.sh \
+        --propertyfile "$props" \
+        --dbDriverName com.mysql.cj.jdbc.Driver \
+        --noupdate \
+        --disableVersionCheck \
+        --disableCentral \
+        --disableOssIndex \
+        --project "${CI_PROJECT_NAME}" \
+        --scan build/runtime-dependencies \
+        --failOnCVSS 5 \
+        --format HTML \
+        --format JSON \
+        --out dependency-check || status=$?
+      rm -f "$props"
+      exit "$status"
+  artifacts:
+    when: always
+    paths:
+      - dependency-check/
+    expire_in: 1 week
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main" && $ESN_DEPCHECK_HOSTNAME && $ESN_DEPCHECK_USERNAME && $ESN_DEPCHECK_PASSWORD
+
+#### The plugin checks its own build with the JAR from BLD:plugin; an available update is a warning, not a red pipeline.
+DEP:plugin:
+  stage: test
+  image: epicsoft/openjdk:jdk25
+  needs:
+    - job: "BLD:plugin"
+      artifacts: true
+  script:
+    - ./gradlew --init-script ci/dependency-updates.init.gradle checkDependencyUpdates --no-configuration-cache
+  allow_failure: true
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+
+PUB:plugin:
   stage: publish
   image: epicsoft/openjdk:jdk25
   needs:
-    - job: build
+    - job: "BLD:plugin"
       artifacts: true
   script:
     - VERSION=${CI_COMMIT_TAG#v}
@@ -36,11 +113,11 @@ publish:
     - if: $CI_COMMIT_TAG
 
 #### GRADLE_PUBLISH_KEY / GRADLE_PUBLISH_SECRET: Plugin Portal API key, masked and protected - plugin-publish reads them itself.
-publish-portal:
+PUB:portal:
   stage: publish
   image: epicsoft/openjdk:jdk25
   needs:
-    - job: build
+    - job: "BLD:plugin"
       artifacts: false
   script:
     - VERSION=${CI_COMMIT_TAG#v}
@@ -50,13 +127,13 @@ publish-portal:
 
 #### The code reaches GitHub through the GitLab push mirror, so this job waits for the tag there.
 #### GITHUB_TOKEN: fine-grained token with Contents read and write, a protected variable - the tag must be protected too.
-github-release:
+REL:github:
   stage: release
   image: epicsoft/ci:latest
   needs:
-    - job: build
+    - job: "BLD:plugin"
       artifacts: true
-    - job: publish
+    - job: "PUB:plugin"
   variables:
     GITHUB_REPO: "epicsoft-llc/${CI_PROJECT_NAME}"
   script:

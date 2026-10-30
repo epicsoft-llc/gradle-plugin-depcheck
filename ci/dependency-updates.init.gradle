@@ -1,0 +1,17 @@
+// DEP:plugin - applies the plugin built by BLD:plugin to its own build: build/libs and build/runtime-dependencies
+initscript {
+  final def root = initscript.sourceFile.parentFile.parentFile
+  dependencies {
+    classpath fileTree(dir: new File(root, "build/libs"), include: "epicsoft-gradle-plugin-depcheck-*.jar", exclude: ["*-sources.jar", "*-javadoc.jar"])
+    classpath fileTree(dir: new File(root, "build/runtime-dependencies"), include: "gson-*.jar")
+  }
+}
+
+rootProject {
+  apply plugin: one.epicsoft.gradle.DepsUpdatePlugin
+  depsUpdate {
+    failOnUpdates = true
+    // Kotlin has to match the version embedded in the Gradle wrapper and is raised together with it
+    exclude = ["org.jetbrains.kotlin.jvm"]
+  }
+}

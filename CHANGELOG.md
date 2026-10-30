@@ -12,6 +12,8 @@ Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
   so `plugins { id "one.epicsoft.depcheck" }` needs no repository. The GitLab package registry keeps receiving every
   release
 - Javadoc JAR next to the plugin and sources JARs
+- CI on `main`, on every push and weekly: licenses (permissive only), known vulnerabilities and newer versions of the
+  runtime dependencies — the plugin checks its own build
 
 ### Changed
 - Artifact renamed from `one.epicsoft:epicsoft-gradle-plugin` to `one.epicsoft:epicsoft-gradle-plugin-depcheck`.

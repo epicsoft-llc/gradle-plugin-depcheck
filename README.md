@@ -294,8 +294,8 @@ The tests need no network: the deps.dev and repository clients run against local
 
 ### Publishing
 
-Runs automatically in the CI pipeline when a Git tag is pushed: `publish` to the GitLab Package Registry (`CI_JOB_TOKEN`
-is set automatically) and `publish-portal` to the Gradle Plugin Portal (CI variables `GRADLE_PUBLISH_KEY` and
+Runs automatically in the CI pipeline when a Git tag is pushed: `PUB:plugin` to the GitLab Package Registry (`CI_JOB_TOKEN`
+is set automatically) and `PUB:portal` to the Gradle Plugin Portal (CI variables `GRADLE_PUBLISH_KEY` and
 `GRADLE_PUBLISH_SECRET`, masked and protected). A version on the Portal cannot be replaced, and a new plugin id waits for
 a manual review there.
 The repository reaches GitHub through a GitLab push mirror; the pipeline then creates the GitHub release with the
@@ -304,6 +304,10 @@ The repository reaches GitHub through a GitLab push mirror; the pipeline then cr
 ```bash
 ./gradlew publishPlugins --validate-only   # checks the Portal metadata, uploads nothing
 ```
+
+On `main` the pipeline also checks the runtime dependencies — Gson and the Kotlin standard library, the JARs the plugin
+brings into your build: their licenses (`./gradlew checkLicense`, permissive licenses only), known vulnerabilities (OWASP
+dependency-check) and newer versions, with the plugin checking its own build. It runs on every push and weekly.
 
 ### Project structure
 

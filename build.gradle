@@ -3,6 +3,7 @@ plugins {
   id "org.jetbrains.kotlin.jvm" version "2.4.10"
   id "maven-publish"
   id "com.gradle.plugin-publish" version "2.2.1"
+  id "com.github.jk1.dependency-license-report" version "3.1.4"
 }
 
 group = "one.epicsoft"
@@ -57,6 +58,16 @@ dependencies {
 
 tasks.named("test") {
   useJUnitPlatform()
+}
+
+// The JARs the plugin brings into a consumer's build, for the vulnerability check of the CI
+tasks.register("runtimeDependencies", Sync) {
+  from configurations.runtimeClasspath
+  into layout.buildDirectory.dir("runtime-dependencies")
+}
+
+licenseReport {
+  allowedLicensesFile = file("allowed-licenses.json")
 }
 
 publishing {
