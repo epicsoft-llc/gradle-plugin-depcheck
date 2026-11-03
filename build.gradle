@@ -4,7 +4,7 @@ plugins {
   id "org.jetbrains.kotlin.jvm" version "2.4.21"
   id "maven-publish"
   id "com.gradle.plugin-publish" version "2.2.1"
-  id "com.github.jk1.dependency-license-report" version "3.1.4"
+  id "com.github.jk1.dependency-license-report" version "3.1.5"
 }
 
 group = "one.epicsoft"

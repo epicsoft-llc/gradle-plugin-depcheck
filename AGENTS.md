@@ -128,7 +128,7 @@ The task must **never touch `Task.project` at execution time** — deprecated in
 | **Tests** | JUnit 6 (`junit-bom`) + `kotlin-test`; TestKit via `java-gradle-plugin` |
 | **CI Image** | `epicsoft/openjdk:jdk25`; `epicsoft/ci:latest` for the GitHub release |
 | **Publishing** | `com.gradle.plugin-publish` 2.2.1 — adds the Javadoc JAR; every plugin in `gradlePlugin` needs `tags` and a `compatibility(it)` block |
-| **License check** | `com.github.jk1.dependency-license-report` 3.1.4 — `checkLicense` against `allowed-licenses.json` (permissive licenses only); not configuration-cache compatible, the entry is discarded |
+| **License check** | `com.github.jk1.dependency-license-report` 3.1.5 — `checkLicense` against `allowed-licenses.json` (permissive licenses only); not configuration-cache compatible, the entry is discarded |
 
 > **Kotlin and the wrapper:** the project compiles plain Kotlin sources, not precompiled script plugins (`kotlin-dsl`), so the Kotlin plugin (`org.jetbrains.kotlin.jvm`) need not equal the Kotlin embedded in the wrapper (`./gradlew --version`, "Kotlin:"; Gradle 9.8.2: 2.4.10). Up to 0.5.0 it was pinned to that version, which left the plugin on Kotlin 2.4.10 and CVE-2026-53914 (fixed in 2.4.20). Still look when raising the wrapper: a genuine incompatibility shows up as `incompatible version of Kotlin` at compile time.
 
