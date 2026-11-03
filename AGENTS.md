@@ -16,7 +16,7 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 | **Task** | `checkDependencyUpdates` |
 | **Repository** | developed on `gitlab.com/epicsoft-networks/gradle-plugin-depcheck`, mirrored to `github.com/epicsoft-llc/gradle-plugin-depcheck` |
 | **Plugin Portal** | `plugins.gradle.org/plugin/one.epicsoft.depcheck`, since 0.5.1 |
-| **Website** | `epicsoft.one/gradle/depcheck/` — the Portal's link since 0.6.1; renders `README.md` of the newest tag |
+| **Website** | `epicsoft.one/products/depcheck/` — the Portal's link (0.6.1 names `/gradle/depcheck/`, which redirects there); renders `README.md` of the newest tag |
 
 ## Rules
 

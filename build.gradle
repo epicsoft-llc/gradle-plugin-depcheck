@@ -10,7 +10,7 @@ plugins {
 group = "one.epicsoft"
 
 gradlePlugin {
-  website = "https://epicsoft.one/gradle/depcheck/"
+  website = "https://epicsoft.one/products/depcheck/"
   vcsUrl = "https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck.git"
   plugins {
     create("depcheck") {
