@@ -7,8 +7,7 @@ Supports both `gradle/libs.versions.toml` (Version Catalog) and `build.gradle` /
 
 Requires a Gradle daemon running on Java 25 or later; your own code can still target Java 17+.
 
-- Plugin id: `one.epicsoft.depcheck` — up to 0.4.1 `one.epicsoft.deps-update`, an id removed in 0.6.0 (see the
-  [changelog](https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck/-/blob/main/CHANGELOG.md))
+- Plugin id: `one.epicsoft.depcheck`
 - License: MIT
 - Source: developed on [GitLab](https://gitlab.com/epicsoft-networks/gradle-plugin-depcheck), mirrored to
   [GitHub](https://github.com/epicsoft-llc/gradle-plugin-depcheck) — issues are welcome on both; code changes only as merge requests on GitLab, the mirror cannot take pull requests
@@ -17,33 +16,18 @@ Requires a Gradle daemon running on Java 25 or later; your own code can still ta
 
 ## Usage
 
-### 1. Plugin repository
+### 1. Apply the plugin
 
-From 0.5.1 on the plugin is on the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/one.epicsoft.depcheck), which
-Gradle asks by default — there is nothing to declare. Every release, the older ones included, is also in a GitLab package
-registry that is readable without credentials:
-
-```groovy
-// settings.gradle — only needed for releases up to 0.5.0
-pluginManagement {
-  repositories {
-    gradlePluginPortal()
-    maven { url = "https://gitlab.com/api/v4/projects/82634030/packages/maven" }
-  }
-}
-```
-
-### 2. Apply the plugin
-
-Add the plugin to `build.gradle`:
+The plugin is on the [Gradle Plugin Portal](https://plugins.gradle.org/plugin/one.epicsoft.depcheck), which Gradle asks by
+default — add it to `build.gradle`, there is no repository to declare:
 
 ```groovy
 plugins {
-  id "one.epicsoft.depcheck" version "0.6.0"
+  id "one.epicsoft.depcheck" version "0.6.1"
 }
 ```
 
-### 3. Configuration (optional)
+### 2. Configuration (optional)
 
 ```groovy
 depsUpdate {
@@ -164,7 +148,7 @@ depsUpdate {
 > }
 > ```
 
-### 4. Run the task
+### 3. Run the task
 
 ```bash
 ./gradlew checkDependencyUpdates
@@ -321,7 +305,7 @@ src/main/kotlin/one/epicsoft/gradle/
 
 1. Bump `version` in `gradle.properties` and in this README
 2. Head the `CHANGELOG.md` entry with `## [X.Y.Z] - <date>` of the coming release — never `[Unreleased]`
-3. Set a Git tag: `git tag 0.6.0 && git push --tags` — tags carry no `v` (the CI would strip one)
+3. Set a Git tag: `git tag 0.6.1 && git push --tags` — tags carry no `v` (the CI would strip one)
 4. The CI pipeline publishes to the GitLab Package Registry and the Gradle Plugin Portal and creates the GitHub release
    automatically
 5. Update the version in the consuming projects

@@ -5,6 +5,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 the versioning follows [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 Entries up to 0.2.5 were reconstructed from the Git tags and commit messages.
 
+## [0.6.1] - 2026-11-03
+
+### Changed
+- The Gradle Plugin Portal page links to the documentation on [epicsoft.one](https://epicsoft.one/gradle/depcheck/)
+  instead of the GitLab repository
+
 ## [0.6.0] - 2026-10-30
 
 ### Removed

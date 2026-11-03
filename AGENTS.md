@@ -16,6 +16,7 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 | **Task** | `checkDependencyUpdates` |
 | **Repository** | developed on `gitlab.com/epicsoft-networks/gradle-plugin-depcheck`, mirrored to `github.com/epicsoft-llc/gradle-plugin-depcheck` |
 | **Plugin Portal** | `plugins.gradle.org/plugin/one.epicsoft.depcheck`, since 0.5.1 |
+| **Website** | `epicsoft.one/gradle/depcheck/` — the Portal's link since 0.6.1; renders `README.md` of the newest tag |
 
 ## Rules
 
@@ -31,6 +32,8 @@ Gradle plugin that reports newer versions of dependencies, Gradle plugins and th
 - **Only a human suppresses warnings.** No `@Suppress`, `// noinspection` or `NOSONAR` — fix the cause or report the
   warning. Test code is the exception.
 - **Always update `README.md`** when bumping the version in `gradle.properties` (all occurrences).
+- **`README.md` is also the plugin's page on epicsoft.one:** keep `# Title` as its first line (it becomes the page
+  heading) and embed no images (the page shows none).
 - **Keep this file current** — update it after every architectural change, new parameter, CI change or new rule.
 
 ## Commands
@@ -177,8 +180,7 @@ Options, defaults and examples are documented in [`README.md`](README.md). Point
 
 - Scalar options (`verbose`, `showAll`, `failOnUpdates`, `includePreRelease`, `checkGradleWrapper`, `checkSubprojects`) and `mavenRepositories` are inherited from root as conventions — a subproject can override them by setting the value explicitly.
 - For `exclude` and `maxVersion`: only root defines it → subproject inherits; only subproject defines it → subproject value; both define it → `excludeMode` / `maxVersionMode` **must** be set in the subproject, otherwise a `GradleException` is thrown at task execution time.
-- Since 0.5.1 consumers get the plugin from the Gradle Plugin Portal without declaring a repository; releases up to
-  0.5.0 are only in the GitLab Package Registry.
+- Consumers get the plugin from the Gradle Plugin Portal without declaring a repository.
 
 ## Release checklist
 
