@@ -317,13 +317,13 @@ src/main/kotlin/one/epicsoft/gradle/
 | | |
 |---|---|
 | Language | Kotlin 2.4.21 |
-| Gradle | 9.8.2 |
+| Gradle | 9.9.1 |
 | HTTP | `java.net.http.HttpClient` (no external framework) |
 | JSON | Gson 2.15.0 |
 | Tests | JUnit 6 + `kotlin-test` |
 | Concurrency | Java Virtual Threads (`Executors.newVirtualThreadPerTaskExecutor()`) |
 
-> **Note:** Gradle 9.8.2 embeds Kotlin 2.4.10. The two need not be identical, because this project compiles plain Kotlin
+> **Note:** Gradle 9.9.1 embeds Kotlin 2.4.21. The two need not be identical, because this project compiles plain Kotlin
 > sources rather than precompiled script plugins; a genuine incompatibility shows up as `incompatible version of Kotlin`
 > at compile time.
 

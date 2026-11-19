@@ -1,6 +1,6 @@
 plugins {
   id "java-gradle-plugin"
-  // Plain Kotlin sources, not kotlin-dsl: need not equal the Kotlin embedded in the wrapper (Gradle 9.8.2: 2.4.10)
+  // Plain Kotlin sources, not kotlin-dsl: need not equal the Kotlin embedded in the wrapper (Gradle 9.9.1: 2.4.21)
   id "org.jetbrains.kotlin.jvm" version "2.4.21"
   id "maven-publish"
   id "com.gradle.plugin-publish" version "2.2.1"
